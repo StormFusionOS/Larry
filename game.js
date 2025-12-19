@@ -160,7 +160,7 @@ function initLevel() {
 // Draw Larry (short bald man in blue shirt)
 function drawPlayer() {
     ctx.save();
-    const screenX = player.x - cameraX;
+    let screenX = player.x - cameraX;
 
     if (player.invincible && Math.floor(player.invincibleTimer / 5) % 2 === 0) {
         ctx.globalAlpha = 0.5;
