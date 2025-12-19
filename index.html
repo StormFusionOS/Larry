@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Larry's Adventure - A Platformer Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui-overlay">
+            <div id="score-display">
+                <span>SCORE: <span id="score">0</span></span>
+                <span>COINS: <span id="coins">0</span></span>
+                <span>LIVES: <span id="lives">3</span></span>
+                <span>TIME: <span id="time">300</span></span>
+            </div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="start-screen">
+            <h1>LARRY'S ADVENTURE</h1>
+            <p>Help Larry collect coins and defeat enemies!</p>
+            <div id="controls-info">
+                <p><strong>Controls:</strong></p>
+                <p>← → Arrow Keys or A/D - Move</p>
+                <p>↑ Arrow Key, W, or SPACE - Jump</p>
+                <p>Jump on enemies to defeat them!</p>
+            </div>
+            <button id="start-btn">START GAME</button>
+        </div>
+        <div id="game-over-screen" class="hidden">
+            <h1>GAME OVER</h1>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <button id="restart-btn">PLAY AGAIN</button>
+        </div>
+        <div id="win-screen" class="hidden">
+            <h1>YOU WIN!</h1>
+            <p>Congratulations Larry!</p>
+            <p>Final Score: <span id="win-score">0</span></p>
+            <button id="win-restart-btn">PLAY AGAIN</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
