@@ -10,6 +10,7 @@
     <div id="game-container">
         <div id="ui-overlay">
             <div id="score-display">
+                <span>WORLD: <span id="level">1-1</span></span>
                 <span>SCORE: <span id="score">0</span></span>
                 <span>COINS: <span id="coins">0</span></span>
                 <span>LIVES: <span id="lives">3</span></span>
@@ -33,9 +34,16 @@
             <p>Final Score: <span id="final-score">0</span></p>
             <button id="restart-btn">PLAY AGAIN</button>
         </div>
+        <div id="level-complete-screen" class="hidden">
+            <h1>LEVEL COMPLETE!</h1>
+            <p>World <span id="completed-level">1-1</span> cleared!</p>
+            <p>Score: <span id="level-score">0</span></p>
+            <button id="next-level-btn">NEXT LEVEL</button>
+        </div>
         <div id="win-screen" class="hidden">
             <h1>YOU WIN!</h1>
             <p>Congratulations Larry!</p>
+            <p>You completed all 6 worlds!</p>
             <p>Final Score: <span id="win-score">0</span></p>
             <button id="win-restart-btn">PLAY AGAIN</button>
         </div>
