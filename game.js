@@ -216,21 +216,31 @@ class Enemy {
         }
 
         if (this.isChasing) {
-            // Chase mode - move towards player
+            // Chase mode - move towards player BUT stay on platform
             this.facing = dx > 0 ? 1 : -1;
 
             if (Math.abs(dx) > 30) {
-                this.velX = this.facing * this.speed;
+                // Check if moving would take us off the platform
+                let canMove = true;
+                if (this.patrolLeft !== null && this.patrolRight !== null) {
+                    if (this.facing > 0 && this.x + this.width >= this.patrolRight - 5) {
+                        canMove = false; // At right edge, can't go right
+                    } else if (this.facing < 0 && this.x <= this.patrolLeft + 5) {
+                        canMove = false; // At left edge, can't go left
+                    }
+                }
+
+                if (canMove) {
+                    this.velX = this.facing * this.speed;
+                } else {
+                    this.velX = 0; // Stop at platform edge
+                }
             } else {
                 this.velX = 0;
             }
 
-            // Jump if player is above and close
-            if (player.y < this.y - 50 && this.onGround && this.jumpCooldown <= 0 && Math.abs(dx) < 150) {
-                this.velY = JUMP_FORCE * 0.8;
-                this.onGround = false;
-                this.jumpCooldown = 60;
-            }
+            // NO jumping - stay on platform
+            // (removed jump behavior so enemies don't leave their platforms)
         } else {
             // Patrol mode - walk back and forth on platform
             if (this.patrolLeft !== null && this.patrolRight !== null) {
@@ -254,6 +264,18 @@ class Enemy {
         }
 
         if (this.jumpCooldown > 0) this.jumpCooldown--;
+
+        // Extra safety: clamp position to platform bounds
+        if (this.patrolLeft !== null && this.patrolRight !== null) {
+            if (this.x < this.patrolLeft) {
+                this.x = this.patrolLeft;
+                this.velX = 0;
+            }
+            if (this.x + this.width > this.patrolRight) {
+                this.x = this.patrolRight - this.width;
+                this.velX = 0;
+            }
+        }
 
         // Apply velocity
         this.x += this.velX;
