@@ -205,7 +205,7 @@ function startMusic(type = 'normal') {
     bassIndex = 0;
     musicPlaying = true;
 
-    const tempo = type === 'boss' ? 200 : 320;
+    const tempo = type === 'boss' ? 160 : 256;
     musicInterval = setInterval(playMusicStep, tempo);
 }
 
