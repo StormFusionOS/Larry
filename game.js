@@ -733,99 +733,148 @@ function drawDeadEnemy(x, y, width, height, type) {
 
 // Draw the player's fists
 function drawFists() {
-    const baseY = SCREEN_HEIGHT - 150;
+    const baseY = SCREEN_HEIGHT - 100;
     const bobY = player.bobOffset * 3;
 
-    // Smash animation
-    let leftX = 100;
-    let rightX = SCREEN_WIDTH - 100;
+    // Smash animation - overhead swing down
+    let leftX = 150;
+    let rightX = SCREEN_WIDTH - 150;
     let fistY = baseY + bobY;
     let fistScale = 1;
+    let armRotation = 0; // Rotation for overhead swing
 
     if (player.isSmashing) {
-        const progress = player.smashFrame / 20;
-
-        if (player.smashFrame < 8) {
-            // Wind up
-            const windUp = player.smashFrame / 8;
-            leftX -= windUp * 50;
-            rightX += windUp * 50;
-            fistY += windUp * 100;
-            fistScale = 1 + windUp * 0.3;
-        } else if (player.smashFrame < 12) {
-            // Smash forward!
-            const smashProgress = (player.smashFrame - 8) / 4;
-            leftX += smashProgress * 200;
-            rightX -= smashProgress * 200;
-            fistY -= smashProgress * 150;
-            fistScale = 1.5 - smashProgress * 0.3;
+        if (player.smashFrame < 6) {
+            // Wind up - raise arms overhead
+            const windUp = player.smashFrame / 6;
+            leftX = 150 + windUp * 100;
+            rightX = SCREEN_WIDTH - 150 - windUp * 100;
+            fistY = baseY - windUp * 400; // Go way up
+            fistScale = 1 + windUp * 0.5;
+            armRotation = -windUp * 0.3; // Tilt back
+        } else if (player.smashFrame < 10) {
+            // SMASH DOWN!
+            const smashProgress = (player.smashFrame - 6) / 4;
+            leftX = 250 + smashProgress * 50;
+            rightX = SCREEN_WIDTH - 250 - smashProgress * 50;
+            fistY = baseY - 400 + smashProgress * 500; // Slam down past center
+            fistScale = 1.5 + smashProgress * 0.3;
+            armRotation = -0.3 + smashProgress * 0.5; // Swing forward
         } else {
-            // Recovery
-            const recovery = (player.smashFrame - 12) / 8;
-            leftX = 100 + 200 * (1 - recovery);
-            rightX = SCREEN_WIDTH - 100 - 200 * (1 - recovery);
-            fistY = baseY - 150 * (1 - recovery);
-            fistScale = 1.2 - recovery * 0.2;
+            // Recovery - return to idle
+            const recovery = (player.smashFrame - 10) / 10;
+            leftX = 300 - recovery * 150;
+            rightX = SCREEN_WIDTH - 300 + recovery * 150;
+            fistY = baseY + 100 - recovery * 100;
+            fistScale = 1.8 - recovery * 0.8;
+            armRotation = 0.2 * (1 - recovery);
         }
     }
 
     // Draw both fists
-    drawFist(leftX, fistY, fistScale, true);
-    drawFist(rightX, fistY, fistScale, false);
+    drawFist(leftX, fistY, fistScale, true, armRotation);
+    drawFist(rightX, fistY, fistScale, false, armRotation);
 }
 
-function drawFist(x, y, scale, isLeft) {
+function drawFist(x, y, scale, isLeft, rotation = 0) {
     ctx.save();
     ctx.translate(x, y);
+    ctx.rotate(rotation * (isLeft ? 1 : -1));
     ctx.scale(scale * (isLeft ? 1 : -1), scale);
 
-    // Arm
-    ctx.fillStyle = '#228B22'; // Dinosaur green
+    // Muscular human arm - upper arm
+    const skinTone = '#D4A574';
+    const skinDark = '#B8956E';
+    const skinLight = '#E8C4A0';
+
+    // Upper arm (bicep area)
+    ctx.fillStyle = skinTone;
     ctx.beginPath();
-    ctx.ellipse(0, 80, 35, 60, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 120, 45, 70, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Bicep muscle bulge
+    ctx.fillStyle = skinLight;
+    ctx.beginPath();
+    ctx.ellipse(-15, 110, 20, 35, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tricep shadow
+    ctx.fillStyle = skinDark;
+    ctx.beginPath();
+    ctx.ellipse(18, 125, 15, 30, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Forearm
+    ctx.fillStyle = skinTone;
+    ctx.beginPath();
+    ctx.ellipse(0, 50, 38, 55, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Forearm muscle definition
+    ctx.fillStyle = skinDark;
+    ctx.beginPath();
+    ctx.ellipse(12, 55, 10, 25, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Vein on forearm
+    ctx.strokeStyle = '#A08060';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-10, 80);
+    ctx.quadraticCurveTo(-15, 50, -5, 25);
+    ctx.stroke();
 
     // Wrist
+    ctx.fillStyle = skinTone;
     ctx.beginPath();
-    ctx.ellipse(0, 30, 40, 30, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 10, 32, 22, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Fist
-    ctx.fillStyle = '#2E8B2E';
+    // Fist - main mass
+    ctx.fillStyle = skinTone;
     ctx.beginPath();
-    ctx.ellipse(0, -10, 50, 45, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -25, 45, 40, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Knuckle highlights
-    ctx.fillStyle = '#3CB371';
+    // Knuckles
+    ctx.fillStyle = skinLight;
     for (let i = -1; i <= 1; i++) {
         ctx.beginPath();
-        ctx.arc(i * 20, -25, 12, 0, Math.PI * 2);
+        ctx.arc(i * 18, -45, 14, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Claws
-    ctx.fillStyle = '#F5F5DC';
+    // Knuckle definition lines
+    ctx.strokeStyle = skinDark;
+    ctx.lineWidth = 2;
     for (let i = -1; i <= 1; i++) {
         ctx.beginPath();
-        ctx.moveTo(i * 22 - 8, -45);
-        ctx.lineTo(i * 22, -75);
-        ctx.lineTo(i * 22 + 8, -45);
-        ctx.fill();
+        ctx.arc(i * 18, -45, 14, 0.8, 2.3);
+        ctx.stroke();
     }
 
-    // Scales detail
-    ctx.fillStyle = '#1E6B1E';
-    for (let i = 0; i < 5; i++) {
-        ctx.beginPath();
-        ctx.arc(
-            Math.cos(i * 1.2) * 25,
-            Math.sin(i * 1.2) * 20 + 10,
-            8,
-            0, Math.PI * 2
-        );
-        ctx.fill();
-    }
+    // Finger wrinkles on fist
+    ctx.strokeStyle = skinDark;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-30, -30);
+    ctx.lineTo(-25, -25);
+    ctx.moveTo(30, -30);
+    ctx.lineTo(25, -25);
+    ctx.stroke();
+
+    // Thumb
+    ctx.fillStyle = skinTone;
+    ctx.beginPath();
+    ctx.ellipse(-35, -15, 12, 20, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Thumb highlight
+    ctx.fillStyle = skinLight;
+    ctx.beginPath();
+    ctx.ellipse(-38, -20, 6, 10, -0.4, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
 }
