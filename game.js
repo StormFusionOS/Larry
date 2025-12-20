@@ -76,45 +76,57 @@ const normalBass = [
     'C3', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST'
 ];
 
-// Boss music - Dark, intense battle theme for Marioman
+// Boss music - 8-BIT HEAVY METAL for Marioman!
 const bossMelody = [
-    // Ominous intro
-    'A3', 'REST', 'A3', 'REST', 'A3', 'B3', 'C4', 'REST',
-    'A3', 'REST', 'A3', 'REST', 'E4', 'D4', 'C4', 'REST',
-    // Rising tension
-    'A3', 'C4', 'E4', 'A4', 'G4', 'REST', 'E4', 'REST',
-    'F4', 'E4', 'D4', 'C4', 'B3', 'REST', 'REST', 'REST',
-    // Aggressive phrase
-    'E4', 'E4', 'E4', 'REST', 'D4', 'D4', 'D4', 'REST',
-    'C4', 'C4', 'B3', 'A3', 'A3', 'REST', 'REST', 'REST',
-    // Dramatic build
-    'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'E4', 'REST',
-    'D4', 'C4', 'B3', 'A3', 'G3', 'REST', 'A3', 'REST',
-    // Intense climax
-    'E4', 'REST', 'E4', 'REST', 'E4', 'F4', 'G4', 'REST',
-    'A4', 'G4', 'F4', 'E4', 'D4', 'C4', 'B3', 'A3',
-    // Resolution
-    'A3', 'REST', 'REST', 'REST', 'A3', 'REST', 'REST', 'REST'
+    // Chugging intro riff
+    'E4', 'E4', 'E4', 'E4', 'E4', 'E4', 'F4', 'E4',
+    'E4', 'E4', 'E4', 'E4', 'G4', 'F4', 'E4', 'REST',
+
+    // Power metal lead
+    'E5', 'E5', 'D5', 'E5', 'G5', 'E5', 'D5', 'REST',
+    'E5', 'E5', 'D5', 'E5', 'A5', 'G5', 'E5', 'REST',
+
+    // Shred run down
+    'A5', 'G5', 'E5', 'D5', 'E5', 'D5', 'B4', 'A4',
+    'G4', 'E4', 'D4', 'E4', 'G4', 'A4', 'B4', 'REST',
+
+    // Brutal breakdown
+    'E4', 'REST', 'E4', 'REST', 'E4', 'E4', 'E4', 'REST',
+    'F4', 'REST', 'F4', 'REST', 'G4', 'G4', 'G4', 'REST',
+
+    // Epic solo section
+    'B4', 'D5', 'E5', 'G5', 'A5', 'G5', 'E5', 'D5',
+    'E5', 'G5', 'A5', 'B5', 'A5', 'G5', 'E5', 'REST',
+
+    // Final assault
+    'E5', 'E5', 'E5', 'E5', 'D5', 'D5', 'D5', 'D5',
+    'E5', 'REST', 'E5', 'REST', 'E5', 'REST', 'REST', 'REST'
 ];
 
 const bossBass = [
-    // Pounding bass rhythm
-    'A2', 'A2', 'REST', 'A2', 'A2', 'A2', 'REST', 'A2',
-    'A2', 'A2', 'REST', 'A2', 'A2', 'A2', 'REST', 'REST',
-    // Rising
-    'A2', 'REST', 'A2', 'REST', 'E2', 'REST', 'E2', 'REST',
-    'F2', 'REST', 'F2', 'REST', 'G2', 'REST', 'REST', 'REST',
-    // Aggressive
-    'E2', 'E2', 'E2', 'REST', 'D2', 'D2', 'D2', 'REST',
-    'A2', 'A2', 'A2', 'REST', 'A2', 'REST', 'REST', 'REST',
-    // Build
-    'A2', 'REST', 'A2', 'REST', 'A2', 'REST', 'A2', 'REST',
-    'D2', 'REST', 'E2', 'REST', 'E2', 'REST', 'A2', 'REST',
-    // Climax
-    'A2', 'REST', 'A2', 'REST', 'A2', 'A2', 'A2', 'REST',
-    'A2', 'A2', 'A2', 'A2', 'D2', 'E2', 'E2', 'A2',
-    // Resolution
-    'A2', 'REST', 'REST', 'REST', 'A2', 'REST', 'REST', 'REST'
+    // Chugging power chords (E5 power chord)
+    'E2', 'E2', 'B2', 'E2', 'E2', 'B2', 'E2', 'E2',
+    'E2', 'E2', 'B2', 'E2', 'G2', 'F2', 'E2', 'REST',
+
+    // Driving metal bass
+    'E2', 'E2', 'E2', 'E2', 'G2', 'G2', 'G2', 'REST',
+    'E2', 'E2', 'E2', 'E2', 'A2', 'A2', 'A2', 'REST',
+
+    // Galloping bass (metal gallop rhythm)
+    'A2', 'E2', 'E2', 'A2', 'E2', 'E2', 'A2', 'E2',
+    'G2', 'E2', 'E2', 'G2', 'E2', 'E2', 'G2', 'REST',
+
+    // Breakdown chug
+    'E2', 'REST', 'E2', 'REST', 'E2', 'E2', 'E2', 'REST',
+    'F2', 'REST', 'F2', 'REST', 'G2', 'G2', 'G2', 'REST',
+
+    // Bass follows solo
+    'E2', 'E2', 'E2', 'E2', 'A2', 'A2', 'A2', 'A2',
+    'E2', 'G2', 'A2', 'B2', 'A2', 'G2', 'E2', 'REST',
+
+    // Final assault bass
+    'E2', 'E2', 'E2', 'E2', 'D2', 'D2', 'D2', 'D2',
+    'E2', 'REST', 'E2', 'REST', 'E2', 'REST', 'REST', 'REST'
 ];
 
 let melodyIndex = 0;
@@ -183,7 +195,7 @@ function startMusic(type = 'normal') {
     bassIndex = 0;
     musicPlaying = true;
 
-    const tempo = type === 'boss' ? 160 : 256;
+    const tempo = type === 'boss' ? 120 : 256;  // Fast metal tempo for boss!
     musicInterval = setInterval(playMusicStep, tempo);
 }
 
