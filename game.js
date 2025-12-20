@@ -144,6 +144,7 @@ let enemies = [];
 let boss = null;
 let isBossFight = false;
 let fireballs = []; // Boss fireballs
+let steaks = []; // Health pickup steaks dropped by boss
 
 // Enemy class - Haru Urara style horse girls
 class Enemy {
@@ -277,8 +278,8 @@ class Boss {
         this.height = 140;
         this.velX = 0;
         this.velY = 0;
-        this.health = 500;
-        this.maxHealth = 500;
+        this.health = 1200;
+        this.maxHealth = 1200;
         this.speed = 2.5;
         this.damage = 25;
         this.onGround = false;
@@ -297,6 +298,7 @@ class Boss {
         this.introTimer = 120; // Intro animation
         this.shakeTimer = 0;
         this.fireballCooldown = 0; // Fireball attack timer
+        this.steakDropTimer = 0; // Timer for dropping health steaks
     }
 
     update() {
@@ -317,8 +319,8 @@ class Boss {
             return;
         }
 
-        // Phase based on health
-        this.phase = this.health > 300 ? 1 : this.health > 150 ? 2 : 3;
+        // Phase based on health (gets more dangerous as health drops)
+        this.phase = this.health > 800 ? 1 : this.health > 400 ? 2 : 3;
 
         // Animation
         this.animTimer++;
@@ -417,6 +419,21 @@ class Boss {
         }
         if (this.fireballCooldown > 0) this.fireballCooldown--;
 
+        // Drop ribeye steaks periodically for player health recovery
+        this.steakDropTimer++;
+        if (this.steakDropTimer >= 300) { // Drop a steak every 5 seconds
+            this.steakDropTimer = 0;
+            steaks.push({
+                x: this.x + this.width / 2 + (Math.random() - 0.5) * 100,
+                y: this.y + 50,
+                velY: -5,
+                width: 40,
+                height: 25,
+                grounded: false,
+                life: 600 // 10 seconds to collect
+            });
+        }
+
         // Jump if player is above (more frequent in later phases)
         const jumpChance = this.phase === 3 ? 40 : this.phase === 2 ? 60 : 80;
         if (player.y < this.y - 80 && this.onGround && this.jumpCooldown <= 0) {
@@ -468,6 +485,19 @@ class Boss {
         this.velY = -3;
         this.velX = -this.facing * 2;
 
+        // 25% chance to drop a steak when hit
+        if (Math.random() < 0.25) {
+            steaks.push({
+                x: this.x + this.width / 2 + (Math.random() - 0.5) * 60,
+                y: this.y + 30,
+                velY: -8 - Math.random() * 4,
+                width: 40,
+                height: 25,
+                grounded: false,
+                life: 600
+            });
+        }
+
         if (this.health <= 0) {
             this.isDead = true;
             screenShake = 25;
@@ -493,6 +523,7 @@ function spawnWave(wave) {
     boss = null;
     isBossFight = false;
     fireballs = []; // Clear fireballs
+    steaks = []; // Clear steaks
 
     if (wave === 6) {
         // Boss fight!
@@ -756,6 +787,57 @@ function update() {
         return fb.life > 0 && fb.y < 700;
     });
 
+    // Update steaks (ribeye health pickups)
+    steaks = steaks.filter(steak => {
+        // Apply gravity
+        if (!steak.grounded) {
+            steak.velY += GRAVITY * 0.5;
+            steak.y += steak.velY;
+
+            // Ground collision
+            for (const plat of platforms) {
+                if (steak.velY >= 0 &&
+                    steak.x + steak.width > plat.x &&
+                    steak.x < plat.x + plat.width &&
+                    steak.y + steak.height >= plat.y &&
+                    steak.y + steak.height <= plat.y + plat.height + steak.velY + 5) {
+                    steak.y = plat.y - steak.height;
+                    steak.velY = 0;
+                    steak.grounded = true;
+                }
+            }
+        }
+
+        steak.life--;
+
+        // Check player collection
+        if (player.x + player.width > steak.x &&
+            player.x < steak.x + steak.width &&
+            player.y + player.height > steak.y &&
+            player.y < steak.y + steak.height) {
+            // Heal player
+            const healAmount = 25;
+            player.health = Math.min(player.health + healAmount, player.maxHealth);
+
+            // Healing particles
+            for (let i = 0; i < 10; i++) {
+                particles.push({
+                    x: steak.x + steak.width / 2,
+                    y: steak.y + steak.height / 2,
+                    velX: (Math.random() - 0.5) * 8,
+                    velY: -Math.random() * 6 - 2,
+                    size: 4 + Math.random() * 4,
+                    color: `hsl(${Math.random() * 30 + 10}, 80%, 50%)`,
+                    life: 30
+                });
+            }
+            return false; // Remove collected steak
+        }
+
+        // Remove if expired or fell off screen
+        return steak.life > 0 && steak.y < 700;
+    });
+
     // Remove dead enemies after animation
     enemies = enemies.filter(e => !e.isDead || e.deathTimer < 60);
 
@@ -866,6 +948,77 @@ function draw() {
             );
             ctx.fill();
         }
+    }
+
+    // Draw ribeye steaks
+    for (const steak of steaks) {
+        const sx = steak.x;
+        const sy = steak.y;
+
+        // Flashing effect when about to expire
+        if (steak.life < 120 && Math.floor(steak.life / 10) % 2 === 0) {
+            ctx.globalAlpha = 0.5;
+        }
+
+        // Glow effect
+        ctx.fillStyle = 'rgba(255, 150, 100, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(sx + steak.width / 2, sy + steak.height / 2, steak.width / 2 + 8, steak.height / 2 + 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ribeye steak shape
+        const steakGrad = ctx.createRadialGradient(sx + steak.width / 2, sy + steak.height / 2, 5, sx + steak.width / 2, sy + steak.height / 2, 25);
+        steakGrad.addColorStop(0, '#DC143C'); // Crimson center (medium-rare)
+        steakGrad.addColorStop(0.4, '#8B0000'); // Dark red
+        steakGrad.addColorStop(0.7, '#A0522D'); // Sienna (seared edge)
+        steakGrad.addColorStop(1, '#654321'); // Dark brown crust
+
+        ctx.fillStyle = steakGrad;
+        ctx.beginPath();
+        // Irregular steak shape
+        ctx.moveTo(sx + 5, sy + steak.height / 2);
+        ctx.quadraticCurveTo(sx, sy + 5, sx + steak.width / 2, sy);
+        ctx.quadraticCurveTo(sx + steak.width, sy + 5, sx + steak.width - 3, sy + steak.height / 2);
+        ctx.quadraticCurveTo(sx + steak.width, sy + steak.height - 3, sx + steak.width / 2, sy + steak.height);
+        ctx.quadraticCurveTo(sx, sy + steak.height - 5, sx + 5, sy + steak.height / 2);
+        ctx.fill();
+
+        // Marbling (fat streaks)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(sx + 8, sy + 8);
+        ctx.quadraticCurveTo(sx + steak.width / 2, sy + 12, sx + steak.width - 10, sy + 10);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(sx + 12, sy + steak.height - 8);
+        ctx.quadraticCurveTo(sx + steak.width / 2, sy + steak.height - 10, sx + steak.width - 8, sy + steak.height - 6);
+        ctx.stroke();
+
+        // Bone (for ribeye)
+        ctx.fillStyle = '#F5F5DC'; // Beige bone
+        ctx.beginPath();
+        ctx.ellipse(sx + steak.width - 8, sy + steak.height / 2, 4, 10, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#D2B48C';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Sparkle effect
+        ctx.fillStyle = 'rgba(255, 255, 200, 0.9)';
+        const sparkleX = sx + 10 + Math.sin(Date.now() / 150) * 3;
+        const sparkleY = sy + 6 + Math.cos(Date.now() / 150) * 2;
+        ctx.beginPath();
+        ctx.arc(sparkleX, sparkleY, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // +25 HP text floating above
+        ctx.fillStyle = '#44FF44';
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('+25 HP', sx + steak.width / 2, sy - 5);
+
+        ctx.globalAlpha = 1;
     }
 
     // Draw player
@@ -1816,30 +1969,64 @@ function drawBoss(boss) {
         ctx.fillText('🔥 The Furry Boss 🔥', bx + 50, by - 12);
     }
 
-    // Health bar (large, at top when in boss fight)
+    // Health bar (large, at top when in boss fight) with "Mario man" under it
     if (!boss.isDead && boss.introTimer <= 0) {
         const healthPercent = boss.health / boss.maxHealth;
-        const barWidth = 300;
+        const barWidth = 350;
         const barX = camera.x + SCREEN_WIDTH / 2 - barWidth / 2;
-        const barY = 50;
+        const barY = 45;
 
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(barX - 5, barY - 5, barWidth + 10, 30);
+        // Background panel
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.beginPath();
+        ctx.roundRect(barX - 10, barY - 8, barWidth + 20, 60, 10);
+        ctx.fill();
 
+        // Border
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(barX - 10, barY - 8, barWidth + 20, 60, 10);
+        ctx.stroke();
+
+        // Health bar background
         const healthColor = boss.phase === 3 ? '#FF0000' : boss.phase === 2 ? '#FF6600' : '#FFCC00';
         ctx.fillStyle = '#333';
-        ctx.fillRect(barX, barY, barWidth, 20);
-        ctx.fillStyle = healthColor;
-        ctx.fillRect(barX, barY, barWidth * healthPercent, 20);
+        ctx.fillRect(barX, barY, barWidth, 25);
 
+        // Health bar fill with gradient
+        const hpGrad = ctx.createLinearGradient(barX, barY, barX, barY + 25);
+        if (boss.phase === 3) {
+            hpGrad.addColorStop(0, '#FF4444');
+            hpGrad.addColorStop(1, '#AA0000');
+        } else if (boss.phase === 2) {
+            hpGrad.addColorStop(0, '#FF9944');
+            hpGrad.addColorStop(1, '#CC4400');
+        } else {
+            hpGrad.addColorStop(0, '#FFDD44');
+            hpGrad.addColorStop(1, '#CC9900');
+        }
+        ctx.fillStyle = hpGrad;
+        ctx.fillRect(barX, barY, barWidth * healthPercent, 25);
+
+        // Health bar border
         ctx.strokeStyle = '#FFD700';
         ctx.lineWidth = 2;
-        ctx.strokeRect(barX, barY, barWidth, 20);
+        ctx.strokeRect(barX, barY, barWidth, 25);
 
+        // Health text on bar
         ctx.fillStyle = 'white';
-        ctx.font = 'bold 12px Arial';
+        ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('MARIOMAN', barX + barWidth / 2, barY + 15);
+        ctx.fillText(`${Math.ceil(boss.health)} / ${boss.maxHealth}`, barX + barWidth / 2, barY + 18);
+
+        // "Mario man" name UNDER the health bar with fire emojis
+        ctx.shadowColor = '#FF4400';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#FF4444';
+        ctx.font = 'bold 16px Impact';
+        ctx.fillText('🔥 MARIO MAN 🔥', barX + barWidth / 2, barY + 45);
+        ctx.shadowBlur = 0;
     }
 }
 
