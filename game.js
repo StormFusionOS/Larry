@@ -25,32 +25,36 @@ const NOTES = {
     REST: 0
 };
 
-// Music patterns - "I'm a Little Horsey" playful chiptune with galloping rhythm
+// Music patterns - "I'm a Little Horsey" by Doctor Waffle (Haru Urara tribute)
 const normalMelody = [
-    // "I'm a little horsey, clip clop clop"
-    'C4', 'C4', 'E4', 'G4', 'G4', 'REST', 'E4', 'C4',
-    'D4', 'D4', 'F4', 'A4', 'G4', 'REST', 'REST', 'REST',
-    // "Running through the meadow, I won't stop"
-    'E4', 'E4', 'G4', 'C5', 'C5', 'REST', 'A4', 'G4',
-    'F4', 'E4', 'D4', 'C4', 'C4', 'REST', 'REST', 'REST',
-    // "Watch me gallop, watch me play"
-    'G4', 'G4', 'A4', 'B4', 'C5', 'REST', 'B4', 'A4',
-    'G4', 'F4', 'E4', 'D4', 'E4', 'REST', 'REST', 'REST',
-    // "I'm a happy horsey every day!"
-    'C4', 'E4', 'G4', 'C5', 'E5', 'REST', 'D5', 'C5',
-    'B4', 'A4', 'G4', 'REST', 'C4', 'REST', 'REST', 'REST'
+    // "I'm a little horsey, running around"
+    'E4', 'E4', 'E4', 'D4', 'C4', 'C4', 'D4', 'E4',
+    'E4', 'D4', 'D4', 'REST', 'E4', 'E4', 'E4', 'D4',
+    'C4', 'C4', 'D4', 'E4', 'D4', 'C4', 'C4', 'REST',
+    // "I don't ever wanna stop"
+    'D4', 'D4', 'E4', 'D4', 'C4', 'REST', 'E4', 'G4',
+    'G4', 'E4', 'D4', 'C4', 'C4', 'REST', 'REST', 'REST',
+    // "I'm a little horsey, running around"
+    'E4', 'E4', 'E4', 'D4', 'C4', 'C4', 'D4', 'E4',
+    'E4', 'D4', 'D4', 'REST', 'E4', 'E4', 'E4', 'D4',
+    'C4', 'C4', 'D4', 'E4', 'D4', 'C4', 'C4', 'REST',
+    // "Clip clop clip clop"
+    'G4', 'E4', 'G4', 'E4', 'G4', 'A4', 'G4', 'REST',
+    'E4', 'D4', 'C4', 'REST', 'C4', 'REST', 'REST', 'REST'
 ];
 
 const normalBass = [
-    // Galloping rhythm - clip clop pattern
-    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
-    'G2', 'D2', 'G2', 'D2', 'G2', 'D2', 'G2', 'REST',
-    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
-    'F2', 'C2', 'G2', 'C2', 'C3', 'REST', 'REST', 'REST',
-    'G2', 'D2', 'G2', 'D2', 'G2', 'D2', 'G2', 'D2',
-    'G2', 'D2', 'G2', 'D2', 'G2', 'REST', 'REST', 'REST',
-    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
-    'G2', 'D2', 'C3', 'REST', 'C3', 'REST', 'REST', 'REST'
+    // Bouncy accompaniment like ukulele strums
+    'C3', 'G3', 'C3', 'G3', 'C3', 'G3', 'C3', 'G3',
+    'G2', 'D3', 'G2', 'D3', 'C3', 'G3', 'C3', 'G3',
+    'F2', 'C3', 'F2', 'C3', 'G2', 'D3', 'C3', 'REST',
+    'G2', 'D3', 'G2', 'D3', 'C3', 'REST', 'C3', 'G3',
+    'C3', 'G3', 'G2', 'D3', 'C3', 'REST', 'REST', 'REST',
+    'C3', 'G3', 'C3', 'G3', 'C3', 'G3', 'C3', 'G3',
+    'G2', 'D3', 'G2', 'D3', 'C3', 'G3', 'C3', 'G3',
+    'F2', 'C3', 'F2', 'C3', 'G2', 'D3', 'C3', 'REST',
+    'C3', 'G3', 'C3', 'G3', 'C3', 'G3', 'C3', 'REST',
+    'G2', 'D3', 'C3', 'REST', 'C3', 'REST', 'REST', 'REST'
 ];
 
 const bossMelody = [
