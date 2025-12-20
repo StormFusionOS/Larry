@@ -141,7 +141,7 @@ function startMusic(type = 'normal') {
     bassIndex = 0;
     musicPlaying = true;
 
-    const tempo = type === 'boss' ? 120 : 150;
+    const tempo = type === 'boss' ? 160 : 240;
     musicInterval = setInterval(playMusicStep, tempo);
 }
 
