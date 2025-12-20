@@ -310,7 +310,7 @@ class Enemy {
     }
 }
 
-// Boss class - Marioman the Furry
+// Boss class - Marioman the Furry with learnable attack patterns
 class Boss {
     constructor(x, y) {
         this.x = x;
@@ -319,10 +319,10 @@ class Boss {
         this.height = 140;
         this.velX = 0;
         this.velY = 0;
-        this.health = 1200;
-        this.maxHealth = 1200;
-        this.speed = 2.5;
-        this.damage = 25;
+        this.health = 1500; // More health for longer fight
+        this.maxHealth = 1500;
+        this.speed = 2.0; // Slightly slower
+        this.damage = 12; // Reduced from 25
         this.onGround = false;
         this.facing = -1;
         this.isHit = false;
@@ -338,8 +338,38 @@ class Boss {
         this.phase = 1; // Gets angrier as health drops
         this.introTimer = 120; // Intro animation
         this.shakeTimer = 0;
-        this.fireballCooldown = 0; // Fireball attack timer
         this.steakDropTimer = 0; // Timer for dropping health steaks
+
+        // Pattern system - learnable attack sequences
+        this.currentPattern = 0;
+        this.patternStep = 0;
+        this.patternTimer = 0;
+        this.patternCooldown = 0;
+        this.isExecutingPattern = false;
+        this.telegraphTimer = 0; // Warning before attacks
+        this.isTelegraphing = false;
+        this.currentAttackType = null;
+
+        // Attack patterns (each is a sequence of moves)
+        // Pattern types: 'fireball_single', 'fireball_spread', 'fireball_wave',
+        //                'charge', 'jump_slam', 'rest'
+        this.patterns = {
+            1: [ // Phase 1 - Simple patterns
+                ['telegraph', 'fireball_single', 'rest', 'rest'],
+                ['telegraph', 'charge', 'rest', 'rest', 'rest'],
+                ['telegraph', 'fireball_single', 'rest', 'telegraph', 'fireball_single', 'rest'],
+            ],
+            2: [ // Phase 2 - More complex
+                ['telegraph', 'fireball_spread', 'rest', 'telegraph', 'charge', 'rest'],
+                ['telegraph', 'jump_slam', 'rest', 'telegraph', 'fireball_single', 'rest'],
+                ['telegraph', 'fireball_single', 'telegraph', 'fireball_single', 'telegraph', 'fireball_single', 'rest', 'rest'],
+            ],
+            3: [ // Phase 3 - Intense but still learnable
+                ['telegraph', 'fireball_wave', 'rest', 'telegraph', 'charge', 'telegraph', 'jump_slam', 'rest'],
+                ['telegraph', 'jump_slam', 'telegraph', 'fireball_spread', 'rest', 'rest'],
+                ['telegraph', 'charge', 'telegraph', 'fireball_wave', 'rest', 'telegraph', 'charge', 'rest'],
+            ]
+        };
     }
 
     update() {
@@ -360,8 +390,8 @@ class Boss {
             return;
         }
 
-        // Phase based on health (gets more dangerous as health drops)
-        this.phase = this.health > 800 ? 1 : this.health > 400 ? 2 : 3;
+        // Phase based on health
+        this.phase = this.health > 1000 ? 1 : this.health > 500 ? 2 : 3;
 
         // Animation
         this.animTimer++;
@@ -379,86 +409,21 @@ class Boss {
         // Gravity
         this.velY += GRAVITY;
 
-        // Move towards player (faster in later phases)
-        const dx = player.x - this.x;
-        this.facing = dx > 0 ? 1 : -1;
-        const phaseSpeed = this.speed + (this.phase - 1) * 0.8;
+        // Pattern-based attack system
+        this.executePatternSystem();
 
-        if (Math.abs(dx) > 60) {
-            this.velX = this.facing * phaseSpeed;
-        } else {
-            this.velX = 0;
-            // Attack when close
-            if (this.attackCooldown <= 0 && !this.isAttacking) {
-                this.isAttacking = true;
-                this.attackFrame = 0;
-                this.attackCooldown = 60 - this.phase * 10;
-            }
-        }
-
-        // Attack animation
-        if (this.isAttacking) {
-            this.attackFrame++;
-            if (this.attackFrame === 15) {
-                // Deal damage if player is close
-                if (Math.abs(player.x - this.x) < 100 && Math.abs(player.y - this.y) < 80) {
-                    player.health -= this.damage;
-                    screenShake = 15;
-                }
-            }
-            if (this.attackFrame >= 30) {
-                this.isAttacking = false;
-            }
-        }
-
-        if (this.attackCooldown > 0) this.attackCooldown--;
-
-        // Fireball attack - shoots fireballs at player
-        if (this.fireballCooldown <= 0 && !this.isAttacking) {
-            const fireballSpeed = 6 + this.phase;
+        // Basic movement when not executing special attacks
+        if (!this.isExecutingPattern || this.currentAttackType === 'rest') {
             const dx = player.x - this.x;
-            const dy = player.y - this.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            this.facing = dx > 0 ? 1 : -1;
 
-            // Shoot fireball towards player
-            fireballs.push({
-                x: this.x + this.width / 2,
-                y: this.y + 30,
-                velX: (dx / dist) * fireballSpeed,
-                velY: (dy / dist) * fireballSpeed,
-                size: 15 + this.phase * 3,
-                damage: 15 + this.phase * 5,
-                life: 180
-            });
-
-            // Shoot more fireballs in later phases
-            if (this.phase >= 2) {
-                fireballs.push({
-                    x: this.x + this.width / 2,
-                    y: this.y + 30,
-                    velX: (dx / dist) * fireballSpeed + 2,
-                    velY: (dy / dist) * fireballSpeed - 2,
-                    size: 12 + this.phase * 2,
-                    damage: 10 + this.phase * 3,
-                    life: 150
-                });
+            // Move towards player slowly when resting
+            if (Math.abs(dx) > 150) {
+                this.velX = this.facing * this.speed * 0.5;
+            } else {
+                this.velX *= 0.8;
             }
-            if (this.phase >= 3) {
-                fireballs.push({
-                    x: this.x + this.width / 2,
-                    y: this.y + 30,
-                    velX: (dx / dist) * fireballSpeed - 2,
-                    velY: (dy / dist) * fireballSpeed - 2,
-                    size: 12 + this.phase * 2,
-                    damage: 10 + this.phase * 3,
-                    life: 150
-                });
-            }
-
-            this.fireballCooldown = 90 - this.phase * 15; // Faster in later phases
-            screenShake = 4;
         }
-        if (this.fireballCooldown > 0) this.fireballCooldown--;
 
         // Drop ribeye steaks periodically for player health recovery
         this.steakDropTimer++;
@@ -514,6 +479,244 @@ class Boss {
         // World bounds
         if (this.x < 0) this.x = 0;
         if (this.x > levelWidth - this.width) this.x = levelWidth - this.width;
+    }
+
+    executePatternSystem() {
+        // Start a new pattern if not executing one
+        if (!this.isExecutingPattern && this.patternCooldown <= 0) {
+            const phasePatterns = this.patterns[this.phase];
+            this.currentPattern = Math.floor(Math.random() * phasePatterns.length);
+            this.patternStep = 0;
+            this.isExecutingPattern = true;
+            this.patternTimer = 0;
+        }
+
+        if (this.patternCooldown > 0) {
+            this.patternCooldown--;
+            return;
+        }
+
+        if (!this.isExecutingPattern) return;
+
+        const phasePatterns = this.patterns[this.phase];
+        const pattern = phasePatterns[this.currentPattern];
+
+        if (this.patternStep >= pattern.length) {
+            // Pattern complete, rest before next pattern
+            this.isExecutingPattern = false;
+            this.patternCooldown = 60; // 1 second between patterns
+            this.currentAttackType = null;
+            return;
+        }
+
+        const currentAction = pattern[this.patternStep];
+        this.currentAttackType = currentAction;
+
+        this.patternTimer++;
+
+        switch (currentAction) {
+            case 'telegraph':
+                this.executeTelegraph();
+                break;
+            case 'fireball_single':
+                this.executeFireballSingle();
+                break;
+            case 'fireball_spread':
+                this.executeFireballSpread();
+                break;
+            case 'fireball_wave':
+                this.executeFireballWave();
+                break;
+            case 'charge':
+                this.executeCharge();
+                break;
+            case 'jump_slam':
+                this.executeJumpSlam();
+                break;
+            case 'rest':
+                this.executeRest();
+                break;
+        }
+    }
+
+    executeTelegraph() {
+        // Visual warning before attack - lasts 45 frames (0.75 seconds)
+        this.isTelegraphing = true;
+        if (this.patternTimer >= 45) {
+            this.isTelegraphing = false;
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
+    }
+
+    executeFireballSingle() {
+        // Single aimed fireball
+        if (this.patternTimer === 1) {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = 5;
+
+            fireballs.push({
+                x: this.x + this.width / 2,
+                y: this.y + 30,
+                velX: (dx / dist) * speed,
+                velY: (dy / dist) * speed,
+                size: 18,
+                damage: 8, // Reduced damage
+                life: 180
+            });
+            screenShake = 3;
+        }
+
+        if (this.patternTimer >= 30) {
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
+    }
+
+    executeFireballSpread() {
+        // 3 fireballs in a spread pattern
+        if (this.patternTimer === 1) {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const baseAngle = Math.atan2(dy, dx);
+            const speed = 4.5;
+
+            for (let i = -1; i <= 1; i++) {
+                const angle = baseAngle + i * 0.3; // 0.3 radian spread
+                fireballs.push({
+                    x: this.x + this.width / 2,
+                    y: this.y + 30,
+                    velX: Math.cos(angle) * speed,
+                    velY: Math.sin(angle) * speed,
+                    size: 15,
+                    damage: 6, // Reduced damage
+                    life: 150
+                });
+            }
+            screenShake = 4;
+        }
+
+        if (this.patternTimer >= 40) {
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
+    }
+
+    executeFireballWave() {
+        // Wave of 5 fireballs fired in sequence
+        if (this.patternTimer % 12 === 1 && this.patternTimer < 60) {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = 4;
+
+            fireballs.push({
+                x: this.x + this.width / 2,
+                y: this.y + 30,
+                velX: (dx / dist) * speed,
+                velY: (dy / dist) * speed,
+                size: 14,
+                damage: 5, // Lower damage per fireball
+                life: 180
+            });
+            screenShake = 2;
+        }
+
+        if (this.patternTimer >= 70) {
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
+    }
+
+    executeCharge() {
+        // Charge attack - dash towards player
+        if (this.patternTimer === 1) {
+            this.facing = player.x > this.x ? 1 : -1;
+            this.velX = this.facing * 8; // Fast charge
+            this.isAttacking = true;
+            this.attackFrame = 0;
+        }
+
+        // Maintain charge speed
+        if (this.patternTimer < 30) {
+            this.velX = this.facing * 8;
+
+            // Damage on contact
+            if (Math.abs(player.x - this.x) < 80 && Math.abs(player.y - this.y) < 80) {
+                if (this.patternTimer > 5 && !this.hitPlayer) {
+                    player.health -= this.damage;
+                    screenShake = 8;
+                    this.hitPlayer = true;
+                }
+            }
+        } else {
+            this.velX *= 0.8; // Slow down
+            this.isAttacking = false;
+        }
+
+        if (this.patternTimer >= 50) {
+            this.patternStep++;
+            this.patternTimer = 0;
+            this.hitPlayer = false;
+        }
+    }
+
+    executeJumpSlam() {
+        // Jump up and slam down
+        if (this.patternTimer === 1) {
+            this.velY = -18; // Big jump
+            this.facing = player.x > this.x ? 1 : -1;
+            this.onGround = false;
+        }
+
+        // Move towards player while in air
+        if (!this.onGround && this.patternTimer < 40) {
+            const dx = player.x - this.x;
+            this.velX = Math.sign(dx) * 3;
+        }
+
+        // Slam damage when landing
+        if (this.onGround && this.patternTimer > 20 && !this.slamDone) {
+            screenShake = 12;
+            this.slamDone = true;
+
+            // Damage in area around landing
+            const slamRange = 120;
+            if (Math.abs(player.x - this.x) < slamRange && Math.abs(player.y - this.y) < 100) {
+                player.health -= this.damage + 5;
+            }
+
+            // Ground slam particles
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: this.x + this.width / 2 + (Math.random() - 0.5) * 100,
+                    y: this.y + this.height,
+                    velX: (Math.random() - 0.5) * 8,
+                    velY: -Math.random() * 6,
+                    size: 5 + Math.random() * 5,
+                    color: '#8B4513',
+                    life: 30
+                });
+            }
+        }
+
+        if (this.patternTimer >= 60) {
+            this.patternStep++;
+            this.patternTimer = 0;
+            this.slamDone = false;
+        }
+    }
+
+    executeRest() {
+        // Recovery period - player's chance to attack
+        this.velX *= 0.9;
+
+        if (this.patternTimer >= 45) { // 0.75 seconds of rest
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
     }
 
     takeDamage(amount) {
@@ -734,7 +937,7 @@ function update() {
                 if (boss.x + boss.width > smashX &&
                     boss.x < smashX + smashRange &&
                     Math.abs(boss.y - player.y) < 100) {
-                    boss.takeDamage(25); // Less damage to boss
+                    boss.takeDamage(15); // Reduced damage to boss
 
                     // Impact particles
                     for (let i = 0; i < 12; i++) {
@@ -1805,6 +2008,15 @@ function drawBoss(boss) {
         ctx.fill();
     }
 
+    // Telegraph warning glow (pulsing red when about to attack)
+    if (boss.isTelegraphing) {
+        const pulse = 0.4 + Math.sin(Date.now() / 80) * 0.3;
+        ctx.fillStyle = `rgba(255, 50, 50, ${pulse})`;
+        ctx.beginPath();
+        ctx.ellipse(50, 70, 65, 85, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
     // Phase colors (gets angrier as health drops)
     let furColor, furLight, eyeColor;
     switch(boss.phase) {
@@ -2026,6 +2238,42 @@ function drawBoss(boss) {
         ctx.font = '12px Arial';
         ctx.fillText('🔥', nameX - 48, nameY + 5);
         ctx.fillText('🔥', nameX + 42, nameY + 5);
+
+        // Telegraph warning indicator
+        if (boss.isTelegraphing) {
+            const warningY = by - 60 + Math.sin(Date.now() / 100) * 3;
+            const pulse = 0.7 + Math.sin(Date.now() / 100) * 0.3;
+
+            // Warning background
+            ctx.fillStyle = `rgba(255, 0, 0, ${pulse * 0.8})`;
+            ctx.beginPath();
+            ctx.roundRect(nameX - 45, warningY - 12, 90, 24, 5);
+            ctx.fill();
+
+            // Warning border
+            ctx.strokeStyle = '#FFFF00';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Warning text
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('⚠️ ATTACK! ⚠️', nameX, warningY + 5);
+        }
+
+        // Show current attack type for learning
+        if (boss.currentAttackType && boss.currentAttackType !== 'rest' && boss.currentAttackType !== 'telegraph') {
+            const attackY = by + boss.height + 20;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.beginPath();
+            ctx.roundRect(nameX - 50, attackY - 10, 100, 20, 4);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFAA00';
+            ctx.font = 'bold 11px Arial';
+            const attackName = boss.currentAttackType.replace('_', ' ').toUpperCase();
+            ctx.fillText(attackName, nameX, attackY + 4);
+        }
     }
 
     // Boss intro announcement
