@@ -25,23 +25,32 @@ const NOTES = {
     REST: 0
 };
 
-// Music patterns - catchy chiptune melodies
+// Music patterns - "I'm a Little Horsey" playful chiptune with galloping rhythm
 const normalMelody = [
-    'E4', 'E4', 'REST', 'E4', 'REST', 'C4', 'E4', 'REST',
-    'G4', 'REST', 'REST', 'REST', 'G3', 'REST', 'REST', 'REST',
-    'C4', 'REST', 'REST', 'G3', 'REST', 'REST', 'E3', 'REST',
-    'REST', 'A3', 'REST', 'B3', 'REST', 'A3', 'G3', 'REST',
-    'E4', 'G4', 'A4', 'REST', 'F4', 'G4', 'REST', 'E4',
-    'REST', 'C4', 'D4', 'B3', 'REST', 'REST', 'REST', 'REST'
+    // "I'm a little horsey, clip clop clop"
+    'C4', 'C4', 'E4', 'G4', 'G4', 'REST', 'E4', 'C4',
+    'D4', 'D4', 'F4', 'A4', 'G4', 'REST', 'REST', 'REST',
+    // "Running through the meadow, I won't stop"
+    'E4', 'E4', 'G4', 'C5', 'C5', 'REST', 'A4', 'G4',
+    'F4', 'E4', 'D4', 'C4', 'C4', 'REST', 'REST', 'REST',
+    // "Watch me gallop, watch me play"
+    'G4', 'G4', 'A4', 'B4', 'C5', 'REST', 'B4', 'A4',
+    'G4', 'F4', 'E4', 'D4', 'E4', 'REST', 'REST', 'REST',
+    // "I'm a happy horsey every day!"
+    'C4', 'E4', 'G4', 'C5', 'E5', 'REST', 'D5', 'C5',
+    'B4', 'A4', 'G4', 'REST', 'C4', 'REST', 'REST', 'REST'
 ];
 
 const normalBass = [
-    'C3', 'REST', 'G3', 'REST', 'C3', 'REST', 'G3', 'REST',
-    'G2', 'REST', 'D3', 'REST', 'G2', 'REST', 'D3', 'REST',
-    'A2', 'REST', 'E3', 'REST', 'A2', 'REST', 'E3', 'REST',
-    'F2', 'REST', 'C3', 'REST', 'G2', 'REST', 'D3', 'REST',
-    'C3', 'REST', 'G3', 'REST', 'F2', 'REST', 'C3', 'REST',
-    'G2', 'REST', 'REST', 'REST', 'G2', 'REST', 'REST', 'REST'
+    // Galloping rhythm - clip clop pattern
+    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
+    'G2', 'D2', 'G2', 'D2', 'G2', 'D2', 'G2', 'REST',
+    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
+    'F2', 'C2', 'G2', 'C2', 'C3', 'REST', 'REST', 'REST',
+    'G2', 'D2', 'G2', 'D2', 'G2', 'D2', 'G2', 'D2',
+    'G2', 'D2', 'G2', 'D2', 'G2', 'REST', 'REST', 'REST',
+    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
+    'G2', 'D2', 'C3', 'REST', 'C3', 'REST', 'REST', 'REST'
 ];
 
 const bossMelody = [
@@ -1132,6 +1141,72 @@ document.addEventListener('keyup', (e) => {
     if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.jump = false;
     if (e.code === 'KeyF' || e.code === 'ControlLeft' || e.code === 'ControlRight') keys.smash = false;
 });
+
+// Mobile touch controls
+function setupMobileControls() {
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnJump = document.getElementById('btn-jump');
+    const btnSmash = document.getElementById('btn-smash');
+
+    if (!btnLeft || !btnRight || !btnJump || !btnSmash) return;
+
+    // Helper to add touch events
+    function addTouchEvents(button, keyName, isAction = false) {
+        button.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            keys[keyName] = true;
+            if (isAction && gameState === 'start') {
+                startGame();
+            }
+        }, { passive: false });
+
+        button.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+        }, { passive: false });
+
+        button.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+        }, { passive: false });
+
+        // Also handle mouse for testing on desktop
+        button.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            keys[keyName] = true;
+            if (isAction && gameState === 'start') {
+                startGame();
+            }
+        });
+
+        button.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            keys[keyName] = false;
+        });
+
+        button.addEventListener('mouseleave', (e) => {
+            keys[keyName] = false;
+        });
+    }
+
+    addTouchEvents(btnLeft, 'left');
+    addTouchEvents(btnRight, 'right');
+    addTouchEvents(btnJump, 'jump', true);
+    addTouchEvents(btnSmash, 'smash');
+
+    // Prevent scrolling when touching controls
+    document.getElementById('mobile-controls').addEventListener('touchmove', (e) => {
+        e.preventDefault();
+    }, { passive: false });
+}
+
+// Initialize mobile controls when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupMobileControls);
+} else {
+    setupMobileControls();
+}
 
 function startGame() {
     gameState = 'playing';

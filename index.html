@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TOFU SMASH - Side-Scrolling Platformer</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -10,6 +10,19 @@
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
     </div>
+
+    <!-- Mobile Touch Controls -->
+    <div id="mobile-controls">
+        <div id="left-controls">
+            <button id="btn-left" class="control-btn arrow-btn">◀</button>
+            <button id="btn-right" class="control-btn arrow-btn">▶</button>
+        </div>
+        <div id="right-controls">
+            <button id="btn-jump" class="control-btn action-btn">JUMP</button>
+            <button id="btn-smash" class="control-btn action-btn smash-btn">SMASH</button>
+        </div>
+    </div>
+
     <script src="game.js"></script>
 </body>
 </html>

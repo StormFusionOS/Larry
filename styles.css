@@ -142,6 +142,88 @@ button:active {
     display: none !important;
 }
 
+/* Mobile Touch Controls */
+#mobile-controls {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 15px;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+#mobile-controls button {
+    pointer-events: auto;
+}
+
+#left-controls {
+    position: absolute;
+    left: 15px;
+    bottom: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+#right-controls {
+    position: absolute;
+    right: 15px;
+    bottom: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+.control-btn {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    font-size: 24px;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(to bottom, rgba(139, 0, 0, 0.8) 0%, rgba(90, 0, 0, 0.9) 100%);
+    border: 3px solid rgba(255, 68, 68, 0.8);
+    color: #ffcccc;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), inset 0 2px 10px rgba(255, 255, 255, 0.1);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+    background: linear-gradient(to bottom, rgba(170, 0, 0, 0.9) 0%, rgba(100, 0, 0, 1) 100%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), inset 0 2px 10px rgba(255, 255, 255, 0.2);
+}
+
+.arrow-btn {
+    width: 65px;
+    height: 65px;
+    font-size: 28px;
+}
+
+.action-btn {
+    width: 80px;
+    height: 80px;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.smash-btn {
+    background: linear-gradient(to bottom, rgba(180, 0, 0, 0.9) 0%, rgba(120, 0, 0, 1) 100%);
+    border-color: #ff6666;
+    animation: smash-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes smash-pulse {
+    0%, 100% { box-shadow: 0 4px 15px rgba(255, 0, 0, 0.3), inset 0 2px 10px rgba(255, 255, 255, 0.1); }
+    50% { box-shadow: 0 4px 25px rgba(255, 0, 0, 0.6), inset 0 2px 10px rgba(255, 255, 255, 0.2); }
+}
+
 /* Responsive */
 @media (max-width: 850px) {
     #gameCanvas {
@@ -166,5 +248,16 @@ button:active {
     button {
         font-size: 16px;
         padding: 14px 35px;
+    }
+}
+
+/* Show mobile controls on touch devices */
+@media (pointer: coarse), (max-width: 850px) {
+    #mobile-controls {
+        display: block;
+    }
+
+    #game-container {
+        margin-bottom: 120px;
     }
 }
