@@ -11,6 +11,148 @@ const JUMP_FORCE = -14;
 const MOVE_SPEED = 5;
 const TILE_SIZE = 40;
 
+// ============ MUSIC SYSTEM ============
+let audioCtx = null;
+let musicPlaying = false;
+let currentMusicType = 'normal'; // 'normal' or 'boss'
+
+// Note frequencies (Hz)
+const NOTES = {
+    C2: 65.41, D2: 73.42, E2: 82.41, F2: 87.31, G2: 98.00, A2: 110.00, B2: 123.47,
+    C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
+    C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
+    C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00, B5: 987.77,
+    REST: 0
+};
+
+// Music patterns - catchy chiptune melodies
+const normalMelody = [
+    'E4', 'E4', 'REST', 'E4', 'REST', 'C4', 'E4', 'REST',
+    'G4', 'REST', 'REST', 'REST', 'G3', 'REST', 'REST', 'REST',
+    'C4', 'REST', 'REST', 'G3', 'REST', 'REST', 'E3', 'REST',
+    'REST', 'A3', 'REST', 'B3', 'REST', 'A3', 'G3', 'REST',
+    'E4', 'G4', 'A4', 'REST', 'F4', 'G4', 'REST', 'E4',
+    'REST', 'C4', 'D4', 'B3', 'REST', 'REST', 'REST', 'REST'
+];
+
+const normalBass = [
+    'C3', 'REST', 'G3', 'REST', 'C3', 'REST', 'G3', 'REST',
+    'G2', 'REST', 'D3', 'REST', 'G2', 'REST', 'D3', 'REST',
+    'A2', 'REST', 'E3', 'REST', 'A2', 'REST', 'E3', 'REST',
+    'F2', 'REST', 'C3', 'REST', 'G2', 'REST', 'D3', 'REST',
+    'C3', 'REST', 'G3', 'REST', 'F2', 'REST', 'C3', 'REST',
+    'G2', 'REST', 'REST', 'REST', 'G2', 'REST', 'REST', 'REST'
+];
+
+const bossMelody = [
+    'E3', 'E3', 'E4', 'E3', 'E3', 'D4', 'E3', 'E3',
+    'C4', 'B3', 'A3', 'REST', 'A3', 'B3', 'C4', 'REST',
+    'E3', 'E3', 'E4', 'E3', 'E3', 'D4', 'E3', 'E3',
+    'G4', 'F4', 'E4', 'D4', 'C4', 'REST', 'REST', 'REST',
+    'A3', 'A3', 'C4', 'A3', 'A3', 'E4', 'A3', 'A3',
+    'D4', 'C4', 'B3', 'A3', 'G3', 'REST', 'REST', 'REST'
+];
+
+const bossBass = [
+    'A2', 'REST', 'A2', 'A2', 'REST', 'A2', 'A2', 'REST',
+    'F2', 'REST', 'F2', 'F2', 'REST', 'G2', 'G2', 'REST',
+    'A2', 'REST', 'A2', 'A2', 'REST', 'A2', 'A2', 'REST',
+    'E2', 'REST', 'E2', 'E2', 'REST', 'E2', 'E2', 'REST',
+    'A2', 'REST', 'A2', 'A2', 'REST', 'A2', 'A2', 'REST',
+    'D2', 'REST', 'D2', 'D2', 'REST', 'E2', 'E2', 'REST'
+];
+
+let melodyIndex = 0;
+let bassIndex = 0;
+let musicInterval = null;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+
+function playNote(frequency, duration, type = 'square', volume = 0.1) {
+    if (!audioCtx || frequency === 0) return;
+
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+
+    gainNode.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    oscillator.start(audioCtx.currentTime);
+    oscillator.stop(audioCtx.currentTime + duration);
+}
+
+function playMusicStep() {
+    const isBoss = currentMusicType === 'boss';
+    const melody = isBoss ? bossMelody : normalMelody;
+    const bass = isBoss ? bossBass : normalBass;
+    const tempo = isBoss ? 0.12 : 0.15;
+
+    // Play melody note
+    const melodyNote = melody[melodyIndex % melody.length];
+    if (melodyNote !== 'REST') {
+        playNote(NOTES[melodyNote], tempo * 2, 'square', 0.08);
+    }
+
+    // Play bass note
+    const bassNote = bass[bassIndex % bass.length];
+    if (bassNote !== 'REST') {
+        playNote(NOTES[bassNote], tempo * 2, 'triangle', 0.12);
+    }
+
+    melodyIndex++;
+    bassIndex++;
+}
+
+function startMusic(type = 'normal') {
+    initAudio();
+
+    if (musicInterval) {
+        clearInterval(musicInterval);
+    }
+
+    currentMusicType = type;
+    melodyIndex = 0;
+    bassIndex = 0;
+    musicPlaying = true;
+
+    const tempo = type === 'boss' ? 120 : 150;
+    musicInterval = setInterval(playMusicStep, tempo);
+}
+
+function stopMusic() {
+    if (musicInterval) {
+        clearInterval(musicInterval);
+        musicInterval = null;
+    }
+    musicPlaying = false;
+}
+
+function switchToBossMusic() {
+    if (currentMusicType !== 'boss') {
+        startMusic('boss');
+    }
+}
+
+function switchToNormalMusic() {
+    if (currentMusicType !== 'normal') {
+        startMusic('normal');
+    }
+}
+// ============ END MUSIC SYSTEM ============
+
 // Player settings
 const player = {
     x: 100,
@@ -343,7 +485,7 @@ class Boss {
         this.velY = 0;
         this.health = 1500; // More health for longer fight
         this.maxHealth = 1500;
-        this.speed = 2.0; // Slightly slower
+        this.speed = 3.5; // Faster boss
         this.damage = 12; // Reduced from 25
         this.onGround = false;
         this.facing = -1;
@@ -480,7 +622,7 @@ class Boss {
 
         // Drop ribeye steaks periodically for player health recovery
         this.steakDropTimer++;
-        if (this.steakDropTimer >= 300) { // Drop a steak every 5 seconds
+        if (this.steakDropTimer >= 600) { // Drop a steak every 10 seconds
             this.steakDropTimer = 0;
             steaks.push({
                 x: this.x + this.width / 2 + (Math.random() - 0.5) * 100,
@@ -875,8 +1017,8 @@ class Boss {
         this.velY = -3;
         this.velX = -this.facing * 2;
 
-        // 25% chance to drop a steak when hit
-        if (Math.random() < 0.25) {
+        // 10% chance to drop a steak when hit
+        if (Math.random() < 0.10) {
             steaks.push({
                 x: this.x + this.width / 2 + (Math.random() - 0.5) * 60,
                 y: this.y + 30,
@@ -1003,6 +1145,7 @@ function startGame() {
     totalKills = 0;
     generateLevel();
     spawnWave(currentWave);
+    startMusic('normal'); // Start background music
 }
 
 // Update game
@@ -1280,9 +1423,12 @@ function update() {
 
     // Check wave completion
     if (isBossFight) {
+        // Switch to boss music
+        switchToBossMusic();
         // Boss fight completion
         if (boss && boss.isDead && boss.deathTimer > 100) {
             gameState = 'win';
+            stopMusic();
         }
     } else if (enemies.filter(e => !e.isDead).length === 0) {
         currentWave++;
@@ -1299,6 +1445,7 @@ function update() {
     // Game over check
     if (player.health <= 0) {
         gameState = 'gameover';
+        stopMusic();
     }
 }
 
