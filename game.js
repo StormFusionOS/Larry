@@ -25,36 +25,77 @@ const NOTES = {
     REST: 0
 };
 
-// Music patterns - "I'm a Little Horsey" by Doctor Waffle (Haru Urara tribute)
+// Music patterns - "I'm a Little Horsey" by Doctor Waffle (Haru Urara tribute) - FULL SONG
 const normalMelody = [
-    // "I'm a little horsey, running around"
+    // Verse 1: "I'm a little horsey, running around"
     'E4', 'E4', 'E4', 'D4', 'C4', 'C4', 'D4', 'E4',
     'E4', 'D4', 'D4', 'REST', 'E4', 'E4', 'E4', 'D4',
     'C4', 'C4', 'D4', 'E4', 'D4', 'C4', 'C4', 'REST',
     // "I don't ever wanna stop"
     'D4', 'D4', 'E4', 'D4', 'C4', 'REST', 'E4', 'G4',
     'G4', 'E4', 'D4', 'C4', 'C4', 'REST', 'REST', 'REST',
-    // "I'm a little horsey, running around"
+
+    // Verse 2: "I'm a little horsey, running around"
     'E4', 'E4', 'E4', 'D4', 'C4', 'C4', 'D4', 'E4',
     'E4', 'D4', 'D4', 'REST', 'E4', 'E4', 'E4', 'D4',
     'C4', 'C4', 'D4', 'E4', 'D4', 'C4', 'C4', 'REST',
     // "Clip clop clip clop"
     'G4', 'E4', 'G4', 'E4', 'G4', 'A4', 'G4', 'REST',
-    'E4', 'D4', 'C4', 'REST', 'C4', 'REST', 'REST', 'REST'
+    'E4', 'D4', 'C4', 'REST', 'REST', 'REST', 'REST', 'REST',
+
+    // Bridge: Higher section
+    'G4', 'G4', 'A4', 'G4', 'E4', 'E4', 'D4', 'C4',
+    'D4', 'E4', 'G4', 'REST', 'G4', 'A4', 'G4', 'E4',
+    'C4', 'D4', 'E4', 'D4', 'C4', 'REST', 'REST', 'REST',
+
+    // "Running free, happy as can be"
+    'C4', 'E4', 'G4', 'G4', 'A4', 'G4', 'E4', 'REST',
+    'E4', 'D4', 'C4', 'D4', 'E4', 'REST', 'REST', 'REST',
+
+    // Verse 3: Return to main melody
+    'E4', 'E4', 'E4', 'D4', 'C4', 'C4', 'D4', 'E4',
+    'E4', 'D4', 'D4', 'REST', 'E4', 'E4', 'E4', 'D4',
+    'C4', 'C4', 'D4', 'E4', 'D4', 'C4', 'C4', 'REST',
+
+    // Outro: "Clip clop" ending
+    'G4', 'E4', 'G4', 'E4', 'C5', 'REST', 'G4', 'E4',
+    'D4', 'C4', 'REST', 'REST', 'C4', 'REST', 'REST', 'REST',
+    'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST'
 ];
 
 const normalBass = [
-    // Bouncy accompaniment like ukulele strums
-    'C3', 'G3', 'C3', 'G3', 'C3', 'G3', 'C3', 'G3',
-    'G2', 'D3', 'G2', 'D3', 'C3', 'G3', 'C3', 'G3',
-    'F2', 'C3', 'F2', 'C3', 'G2', 'D3', 'C3', 'REST',
-    'G2', 'D3', 'G2', 'D3', 'C3', 'REST', 'C3', 'G3',
-    'C3', 'G3', 'G2', 'D3', 'C3', 'REST', 'REST', 'REST',
-    'C3', 'G3', 'C3', 'G3', 'C3', 'G3', 'C3', 'G3',
-    'G2', 'D3', 'G2', 'D3', 'C3', 'G3', 'C3', 'G3',
-    'F2', 'C3', 'F2', 'C3', 'G2', 'D3', 'C3', 'REST',
-    'C3', 'G3', 'C3', 'G3', 'C3', 'G3', 'C3', 'REST',
-    'G2', 'D3', 'C3', 'REST', 'C3', 'REST', 'REST', 'REST'
+    // Verse 1
+    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
+    'G2', 'D2', 'G2', 'D2', 'C3', 'G2', 'C3', 'G2',
+    'F2', 'C2', 'F2', 'C2', 'G2', 'D2', 'C3', 'REST',
+    'G2', 'D2', 'G2', 'D2', 'C3', 'REST', 'C3', 'G2',
+    'C3', 'G2', 'G2', 'D2', 'C3', 'REST', 'REST', 'REST',
+
+    // Verse 2
+    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
+    'G2', 'D2', 'G2', 'D2', 'C3', 'G2', 'C3', 'G2',
+    'F2', 'C2', 'F2', 'C2', 'G2', 'D2', 'C3', 'REST',
+    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'REST',
+    'G2', 'D2', 'C3', 'REST', 'REST', 'REST', 'REST', 'REST',
+
+    // Bridge
+    'G2', 'D2', 'G2', 'D2', 'C3', 'G2', 'C3', 'G2',
+    'G2', 'D2', 'G2', 'REST', 'G2', 'D2', 'G2', 'D2',
+    'F2', 'C2', 'F2', 'C2', 'C3', 'REST', 'REST', 'REST',
+
+    // Running free
+    'C3', 'G2', 'C3', 'G2', 'F2', 'C2', 'C3', 'REST',
+    'G2', 'D2', 'C3', 'G2', 'C3', 'REST', 'REST', 'REST',
+
+    // Verse 3
+    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
+    'G2', 'D2', 'G2', 'D2', 'C3', 'G2', 'C3', 'G2',
+    'F2', 'C2', 'F2', 'C2', 'G2', 'D2', 'C3', 'REST',
+
+    // Outro
+    'C3', 'G2', 'C3', 'G2', 'C3', 'REST', 'C3', 'G2',
+    'G2', 'C3', 'REST', 'REST', 'C3', 'REST', 'REST', 'REST',
+    'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST'
 ];
 
 const bossMelody = [
@@ -141,7 +182,7 @@ function startMusic(type = 'normal') {
     bassIndex = 0;
     musicPlaying = true;
 
-    const tempo = type === 'boss' ? 160 : 240;
+    const tempo = type === 'boss' ? 200 : 320;
     musicInterval = setInterval(playMusicStep, tempo);
 }
 
