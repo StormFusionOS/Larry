@@ -16,85 +16,79 @@ let audioCtx = null;
 let musicPlaying = false;
 let currentMusicType = 'normal'; // 'normal' or 'boss'
 
-// Note frequencies (Hz)
+// Note frequencies (Hz) - includes sharps for jazzy chords
 const NOTES = {
-    C2: 65.41, D2: 73.42, E2: 82.41, F2: 87.31, G2: 98.00, A2: 110.00, B2: 123.47,
-    C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.00, A3: 220.00, B3: 246.94,
-    C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00, A4: 440.00, B4: 493.88,
-    C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.00, B5: 987.77,
+    C2: 65.41, Cs2: 69.30, D2: 73.42, Ds2: 77.78, E2: 82.41, F2: 87.31, Fs2: 92.50, G2: 98.00, Gs2: 103.83, A2: 110.00, As2: 116.54, B2: 123.47,
+    C3: 130.81, Cs3: 138.59, D3: 146.83, Ds3: 155.56, E3: 164.81, F3: 174.61, Fs3: 185.00, G3: 196.00, Gs3: 207.65, A3: 220.00, As3: 233.08, B3: 246.94,
+    C4: 261.63, Cs4: 277.18, D4: 293.66, Ds4: 311.13, E4: 329.63, F4: 349.23, Fs4: 369.99, G4: 392.00, Gs4: 415.30, A4: 440.00, As4: 466.16, B4: 493.88,
+    C5: 523.25, Cs5: 554.37, D5: 587.33, Ds5: 622.25, E5: 659.25, F5: 698.46, Fs5: 739.99, G5: 783.99, Gs5: 830.61, A5: 880.00, As5: 932.33, B5: 987.77,
     REST: 0
 };
 
-// Music patterns - "I'm a Little Horsey" by Doctor Waffle (Haru Urara tribute) - FULL SONG
+// Music patterns - "I'm a Little Horsey" (You've Got a Friend in Me style - ragtime/jazz feel)
 const normalMelody = [
-    // Verse 1: "I'm a little horsey, running around"
-    'E4', 'E4', 'E4', 'D4', 'C4', 'C4', 'D4', 'E4',
-    'E4', 'D4', 'D4', 'REST', 'E4', 'E4', 'E4', 'D4',
-    'C4', 'C4', 'D4', 'E4', 'D4', 'C4', 'C4', 'REST',
-    // "I don't ever wanna stop"
-    'D4', 'D4', 'E4', 'D4', 'C4', 'REST', 'E4', 'G4',
-    'G4', 'E4', 'D4', 'C4', 'C4', 'REST', 'REST', 'REST',
+    // Intro - jazzy pickup (C chord)
+    'C4', 'E4', 'G4', 'C5', 'REST', 'REST', 'REST', 'REST',
 
-    // Verse 2: "I'm a little horsey, running around"
-    'E4', 'E4', 'E4', 'D4', 'C4', 'C4', 'D4', 'E4',
-    'E4', 'D4', 'D4', 'REST', 'E4', 'E4', 'E4', 'D4',
-    'C4', 'C4', 'D4', 'E4', 'D4', 'C4', 'C4', 'REST',
-    // "Clip clop clip clop"
-    'G4', 'E4', 'G4', 'E4', 'G4', 'A4', 'G4', 'REST',
-    'E4', 'D4', 'C4', 'REST', 'REST', 'REST', 'REST', 'REST',
+    // "I'm a little horsey" (C - E7)
+    'G4', 'G4', 'G4', 'G4', 'A4', 'G4', 'E4', 'REST',
+    'Gs4', 'Gs4', 'A4', 'B4', 'C5', 'REST', 'REST', 'REST',
 
-    // Bridge: Higher section
-    'G4', 'G4', 'A4', 'G4', 'E4', 'E4', 'D4', 'C4',
-    'D4', 'E4', 'G4', 'REST', 'G4', 'A4', 'G4', 'E4',
-    'C4', 'D4', 'E4', 'D4', 'C4', 'REST', 'REST', 'REST',
+    // "running around" (Am - F)
+    'E4', 'E4', 'E4', 'A4', 'G4', 'REST', 'F4', 'E4',
+    'F4', 'F4', 'A4', 'C5', 'A4', 'REST', 'REST', 'REST',
 
-    // "Running free, happy as can be"
-    'C4', 'E4', 'G4', 'G4', 'A4', 'G4', 'E4', 'REST',
-    'E4', 'D4', 'C4', 'D4', 'E4', 'REST', 'REST', 'REST',
+    // "I don't ever wanna stop" (G7 - C)
+    'D4', 'D4', 'F4', 'G4', 'A4', 'B4', 'C5', 'REST',
+    'E4', 'D4', 'C4', 'REST', 'C4', 'REST', 'REST', 'REST',
 
-    // Verse 3: Return to main melody
-    'E4', 'E4', 'E4', 'D4', 'C4', 'C4', 'D4', 'E4',
-    'E4', 'D4', 'D4', 'REST', 'E4', 'E4', 'E4', 'D4',
-    'C4', 'C4', 'D4', 'E4', 'D4', 'C4', 'C4', 'REST',
+    // Verse 2: "I'm a little horsey" (C - E7)
+    'G4', 'G4', 'G4', 'G4', 'A4', 'G4', 'E4', 'REST',
+    'Gs4', 'Gs4', 'A4', 'B4', 'C5', 'REST', 'REST', 'REST',
 
-    // Outro: "Clip clop" ending
-    'G4', 'E4', 'G4', 'E4', 'C5', 'REST', 'G4', 'E4',
-    'D4', 'C4', 'REST', 'REST', 'C4', 'REST', 'REST', 'REST',
+    // "running around" (Am - F)
+    'E4', 'E4', 'E4', 'A4', 'G4', 'REST', 'F4', 'E4',
+    'F4', 'F4', 'A4', 'C5', 'A4', 'REST', 'REST', 'REST',
+
+    // "Clip clop clip clop" (D7 - G7)
+    'Fs4', 'A4', 'Fs4', 'A4', 'D4', 'REST', 'REST', 'REST',
+    'F4', 'G4', 'F4', 'G4', 'B4', 'REST', 'REST', 'REST',
+
+    // Resolution (C)
+    'C5', 'G4', 'E4', 'C4', 'C4', 'REST', 'REST', 'REST',
     'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST'
 ];
 
 const normalBass = [
-    // Verse 1
-    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
-    'G2', 'D2', 'G2', 'D2', 'C3', 'G2', 'C3', 'G2',
-    'F2', 'C2', 'F2', 'C2', 'G2', 'D2', 'C3', 'REST',
-    'G2', 'D2', 'G2', 'D2', 'C3', 'REST', 'C3', 'G2',
-    'C3', 'G2', 'G2', 'D2', 'C3', 'REST', 'REST', 'REST',
+    // Intro
+    'C3', 'E3', 'G3', 'C3', 'REST', 'REST', 'REST', 'REST',
 
-    // Verse 2
-    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
-    'G2', 'D2', 'G2', 'D2', 'C3', 'G2', 'C3', 'G2',
-    'F2', 'C2', 'F2', 'C2', 'G2', 'D2', 'C3', 'REST',
-    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'REST',
-    'G2', 'D2', 'C3', 'REST', 'REST', 'REST', 'REST', 'REST',
+    // C - E7 (note the E bass with G# for E7)
+    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'E3', 'REST',
+    'E2', 'Gs2', 'B2', 'E2', 'C3', 'REST', 'REST', 'REST',
 
-    // Bridge
-    'G2', 'D2', 'G2', 'D2', 'C3', 'G2', 'C3', 'G2',
-    'G2', 'D2', 'G2', 'REST', 'G2', 'D2', 'G2', 'D2',
-    'F2', 'C2', 'F2', 'C2', 'C3', 'REST', 'REST', 'REST',
+    // Am - F
+    'A2', 'E2', 'A2', 'E2', 'A2', 'REST', 'A2', 'E2',
+    'F2', 'C2', 'F2', 'A2', 'F2', 'REST', 'REST', 'REST',
 
-    // Running free
-    'C3', 'G2', 'C3', 'G2', 'F2', 'C2', 'C3', 'REST',
-    'G2', 'D2', 'C3', 'G2', 'C3', 'REST', 'REST', 'REST',
+    // G7 - C
+    'G2', 'D2', 'G2', 'D2', 'G2', 'B2', 'G2', 'REST',
+    'C3', 'G2', 'C3', 'REST', 'C3', 'REST', 'REST', 'REST',
 
-    // Verse 3
-    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'C3', 'G2',
-    'G2', 'D2', 'G2', 'D2', 'C3', 'G2', 'C3', 'G2',
-    'F2', 'C2', 'F2', 'C2', 'G2', 'D2', 'C3', 'REST',
+    // C - E7
+    'C3', 'G2', 'C3', 'G2', 'C3', 'G2', 'E3', 'REST',
+    'E2', 'Gs2', 'B2', 'E2', 'C3', 'REST', 'REST', 'REST',
 
-    // Outro
-    'C3', 'G2', 'C3', 'G2', 'C3', 'REST', 'C3', 'G2',
-    'G2', 'C3', 'REST', 'REST', 'C3', 'REST', 'REST', 'REST',
+    // Am - F
+    'A2', 'E2', 'A2', 'E2', 'A2', 'REST', 'A2', 'E2',
+    'F2', 'C2', 'F2', 'A2', 'F2', 'REST', 'REST', 'REST',
+
+    // D7 - G7
+    'D2', 'Fs2', 'A2', 'D2', 'D2', 'REST', 'REST', 'REST',
+    'G2', 'B2', 'D2', 'G2', 'G2', 'REST', 'REST', 'REST',
+
+    // C resolution
+    'C3', 'E3', 'G3', 'C3', 'C3', 'REST', 'REST', 'REST',
     'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST'
 ];
 
