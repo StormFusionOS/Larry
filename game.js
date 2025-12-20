@@ -98,22 +98,45 @@ const normalBass = [
     'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST', 'REST'
 ];
 
+// Boss music - Dark, intense battle theme for Marioman
 const bossMelody = [
-    'E3', 'E3', 'E4', 'E3', 'E3', 'D4', 'E3', 'E3',
-    'C4', 'B3', 'A3', 'REST', 'A3', 'B3', 'C4', 'REST',
-    'E3', 'E3', 'E4', 'E3', 'E3', 'D4', 'E3', 'E3',
-    'G4', 'F4', 'E4', 'D4', 'C4', 'REST', 'REST', 'REST',
-    'A3', 'A3', 'C4', 'A3', 'A3', 'E4', 'A3', 'A3',
-    'D4', 'C4', 'B3', 'A3', 'G3', 'REST', 'REST', 'REST'
+    // Ominous intro
+    'A3', 'REST', 'A3', 'REST', 'A3', 'B3', 'C4', 'REST',
+    'A3', 'REST', 'A3', 'REST', 'E4', 'D4', 'C4', 'REST',
+    // Rising tension
+    'A3', 'C4', 'E4', 'A4', 'G4', 'REST', 'E4', 'REST',
+    'F4', 'E4', 'D4', 'C4', 'B3', 'REST', 'REST', 'REST',
+    // Aggressive phrase
+    'E4', 'E4', 'E4', 'REST', 'D4', 'D4', 'D4', 'REST',
+    'C4', 'C4', 'B3', 'A3', 'A3', 'REST', 'REST', 'REST',
+    // Dramatic build
+    'A3', 'B3', 'C4', 'D4', 'E4', 'F4', 'E4', 'REST',
+    'D4', 'C4', 'B3', 'A3', 'G3', 'REST', 'A3', 'REST',
+    // Intense climax
+    'E4', 'REST', 'E4', 'REST', 'E4', 'F4', 'G4', 'REST',
+    'A4', 'G4', 'F4', 'E4', 'D4', 'C4', 'B3', 'A3',
+    // Resolution
+    'A3', 'REST', 'REST', 'REST', 'A3', 'REST', 'REST', 'REST'
 ];
 
 const bossBass = [
-    'A2', 'REST', 'A2', 'A2', 'REST', 'A2', 'A2', 'REST',
-    'F2', 'REST', 'F2', 'F2', 'REST', 'G2', 'G2', 'REST',
-    'A2', 'REST', 'A2', 'A2', 'REST', 'A2', 'A2', 'REST',
-    'E2', 'REST', 'E2', 'E2', 'REST', 'E2', 'E2', 'REST',
-    'A2', 'REST', 'A2', 'A2', 'REST', 'A2', 'A2', 'REST',
-    'D2', 'REST', 'D2', 'D2', 'REST', 'E2', 'E2', 'REST'
+    // Pounding bass rhythm
+    'A2', 'A2', 'REST', 'A2', 'A2', 'A2', 'REST', 'A2',
+    'A2', 'A2', 'REST', 'A2', 'A2', 'A2', 'REST', 'REST',
+    // Rising
+    'A2', 'REST', 'A2', 'REST', 'E2', 'REST', 'E2', 'REST',
+    'F2', 'REST', 'F2', 'REST', 'G2', 'REST', 'REST', 'REST',
+    // Aggressive
+    'E2', 'E2', 'E2', 'REST', 'D2', 'D2', 'D2', 'REST',
+    'A2', 'A2', 'A2', 'REST', 'A2', 'REST', 'REST', 'REST',
+    // Build
+    'A2', 'REST', 'A2', 'REST', 'A2', 'REST', 'A2', 'REST',
+    'D2', 'REST', 'E2', 'REST', 'E2', 'REST', 'A2', 'REST',
+    // Climax
+    'A2', 'REST', 'A2', 'REST', 'A2', 'A2', 'A2', 'REST',
+    'A2', 'A2', 'A2', 'A2', 'D2', 'E2', 'E2', 'A2',
+    // Resolution
+    'A2', 'REST', 'REST', 'REST', 'A2', 'REST', 'REST', 'REST'
 ];
 
 let melodyIndex = 0;
@@ -182,7 +205,7 @@ function startMusic(type = 'normal') {
     bassIndex = 0;
     musicPlaying = true;
 
-    const tempo = type === 'boss' ? 200 : 320;
+    const tempo = type === 'boss' ? 160 : 256;
     musicInterval = setInterval(playMusicStep, tempo);
 }
 
