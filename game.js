@@ -782,98 +782,364 @@ function drawFist(x, y, scale, isLeft, rotation = 0) {
     ctx.rotate(rotation * (isLeft ? 1 : -1));
     ctx.scale(scale * (isLeft ? 1 : -1), scale);
 
-    // Muscular human arm - upper arm
-    const skinTone = '#D4A574';
-    const skinDark = '#B8956E';
-    const skinLight = '#E8C4A0';
+    // Hyper-realistic skin color palette
+    const skinBase = '#D4A574';
+    const skinWarm = '#E8B896';
+    const skinPink = '#E8C0B0';
+    const skinShadow = '#A67C5B';
+    const skinDeepShadow = '#8B6547';
+    const skinHighlight = '#F5D5C0';
+    const skinPale = '#F0E0D6';
+    const veinBlue = '#7090A8';
+    const veinPurple = '#9080A0';
 
-    // Upper arm (bicep area)
-    ctx.fillStyle = skinTone;
+    // === UPPER ARM WITH REALISTIC MUSCLE ANATOMY ===
+
+    // Base arm shape with gradient
+    const armGradient = ctx.createRadialGradient(-5, 130, 10, 0, 130, 70);
+    armGradient.addColorStop(0, skinHighlight);
+    armGradient.addColorStop(0.3, skinWarm);
+    armGradient.addColorStop(0.7, skinBase);
+    armGradient.addColorStop(1, skinShadow);
+    ctx.fillStyle = armGradient;
     ctx.beginPath();
-    ctx.ellipse(0, 120, 45, 70, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 130, 48, 72, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Bicep muscle bulge
-    ctx.fillStyle = skinLight;
+    // Deltoid muscle insertion
+    ctx.fillStyle = skinWarm;
     ctx.beginPath();
-    ctx.ellipse(-15, 110, 20, 35, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(-8, 175, 25, 20, -0.3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Tricep shadow
-    ctx.fillStyle = skinDark;
+    // Bicep peak - detailed
+    const bicepGradient = ctx.createRadialGradient(-15, 115, 5, -12, 118, 35);
+    bicepGradient.addColorStop(0, skinHighlight);
+    bicepGradient.addColorStop(0.5, skinWarm);
+    bicepGradient.addColorStop(1, skinBase);
+    ctx.fillStyle = bicepGradient;
     ctx.beginPath();
-    ctx.ellipse(18, 125, 15, 30, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(-15, 118, 22, 38, -0.15, 0, Math.PI * 2);
     ctx.fill();
 
-    // Forearm
-    ctx.fillStyle = skinTone;
+    // Bicep vein
+    ctx.strokeStyle = veinBlue;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.ellipse(0, 50, 38, 55, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Forearm muscle definition
-    ctx.fillStyle = skinDark;
+    ctx.moveTo(-25, 150);
+    ctx.quadraticCurveTo(-28, 130, -20, 110);
+    ctx.quadraticCurveTo(-15, 95, -18, 85);
+    ctx.stroke();
+    // Vein highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(12, 55, 10, 25, 0.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Vein on forearm
-    ctx.strokeStyle = '#A08060';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-10, 80);
-    ctx.quadraticCurveTo(-15, 50, -5, 25);
+    ctx.moveTo(-26, 148);
+    ctx.quadraticCurveTo(-29, 130, -21, 112);
     ctx.stroke();
 
-    // Wrist
-    ctx.fillStyle = skinTone;
+    // Tricep - horseshoe shape
+    ctx.fillStyle = skinShadow;
     ctx.beginPath();
-    ctx.ellipse(0, 10, 32, 22, 0, 0, Math.PI * 2);
+    ctx.ellipse(20, 135, 18, 35, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = skinDeepShadow;
+    ctx.beginPath();
+    ctx.ellipse(25, 140, 10, 20, 0.3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Fist - main mass
-    ctx.fillStyle = skinTone;
-    ctx.beginPath();
-    ctx.ellipse(0, -25, 45, 40, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Knuckles
-    ctx.fillStyle = skinLight;
-    for (let i = -1; i <= 1; i++) {
+    // Arm hair (subtle)
+    ctx.strokeStyle = 'rgba(80, 60, 40, 0.3)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 25; i++) {
+        const hx = -30 + Math.random() * 60;
+        const hy = 90 + Math.random() * 80;
         ctx.beginPath();
-        ctx.arc(i * 18, -45, 14, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    // Knuckle definition lines
-    ctx.strokeStyle = skinDark;
-    ctx.lineWidth = 2;
-    for (let i = -1; i <= 1; i++) {
-        ctx.beginPath();
-        ctx.arc(i * 18, -45, 14, 0.8, 2.3);
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(hx + (Math.random() - 0.5) * 6, hy - 4 - Math.random() * 4);
         ctx.stroke();
     }
 
-    // Finger wrinkles on fist
-    ctx.strokeStyle = skinDark;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-30, -30);
-    ctx.lineTo(-25, -25);
-    ctx.moveTo(30, -30);
-    ctx.lineTo(25, -25);
-    ctx.stroke();
+    // TOFU tattoo on left arm - more realistic ink
+    if (isLeft) {
+        ctx.save();
+        // Tattoo shadow (skin indent effect)
+        ctx.fillStyle = 'rgba(0, 40, 20, 0.15)';
+        ctx.font = 'bold 26px Impact';
+        ctx.textAlign = 'center';
+        ctx.rotate(-0.08);
+        ctx.fillText('TOFU', 2, 132);
+        // Main tattoo ink
+        ctx.fillStyle = '#1B4D3E';
+        ctx.fillText('TOFU', 0, 130);
+        // Ink texture variation
+        ctx.fillStyle = 'rgba(20, 60, 40, 0.7)';
+        ctx.font = 'bold 24px Impact';
+        ctx.fillText('TOFU', 0, 130);
+        // Slight highlight on raised ink
+        ctx.strokeStyle = 'rgba(100, 140, 120, 0.3)';
+        ctx.lineWidth = 0.5;
+        ctx.strokeText('TOFU', -1, 129);
+        ctx.restore();
+    }
 
-    // Thumb
-    ctx.fillStyle = skinTone;
+    // === FOREARM WITH MUSCLE GROUPS ===
+
+    // Brachioradialis muscle
+    const forearmGradient = ctx.createRadialGradient(5, 55, 5, 0, 55, 55);
+    forearmGradient.addColorStop(0, skinHighlight);
+    forearmGradient.addColorStop(0.4, skinWarm);
+    forearmGradient.addColorStop(0.8, skinBase);
+    forearmGradient.addColorStop(1, skinShadow);
+    ctx.fillStyle = forearmGradient;
     ctx.beginPath();
-    ctx.ellipse(-35, -15, 12, 20, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(0, 55, 38, 55, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Thumb highlight
-    ctx.fillStyle = skinLight;
+    // Extensor muscles
+    ctx.fillStyle = skinBase;
     ctx.beginPath();
-    ctx.ellipse(-38, -20, 6, 10, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(15, 50, 12, 30, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Flexor muscles (inner arm shadow)
+    ctx.fillStyle = skinShadow;
+    ctx.beginPath();
+    ctx.ellipse(-18, 60, 10, 28, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Complex forearm veins
+    ctx.strokeStyle = veinBlue;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-12, 90);
+    ctx.quadraticCurveTo(-15, 65, -8, 40);
+    ctx.quadraticCurveTo(-5, 25, -10, 10);
+    ctx.stroke();
+    // Branch vein
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-10, 55);
+    ctx.quadraticCurveTo(-20, 45, -25, 50);
+    ctx.stroke();
+    // Second major vein
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(10, 85);
+    ctx.quadraticCurveTo(15, 60, 8, 35);
+    ctx.stroke();
+
+    // Forearm hair
+    ctx.strokeStyle = 'rgba(70, 50, 35, 0.25)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < 30; i++) {
+        const hx = -25 + Math.random() * 50;
+        const hy = 20 + Math.random() * 70;
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(hx + (Math.random() - 0.5) * 5, hy - 3 - Math.random() * 4);
+        ctx.stroke();
+    }
+
+    // === WRIST ===
+    const wristGradient = ctx.createLinearGradient(-30, 12, 30, 12);
+    wristGradient.addColorStop(0, skinShadow);
+    wristGradient.addColorStop(0.3, skinBase);
+    wristGradient.addColorStop(0.7, skinWarm);
+    wristGradient.addColorStop(1, skinShadow);
+    ctx.fillStyle = wristGradient;
+    ctx.beginPath();
+    ctx.ellipse(0, 12, 30, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wrist bone protrusion (ulna)
+    ctx.fillStyle = skinHighlight;
+    ctx.beginPath();
+    ctx.ellipse(25, 15, 8, 10, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wrist tendons
+    ctx.strokeStyle = skinShadow;
+    ctx.lineWidth = 1.5;
+    for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 8, 25);
+        ctx.lineTo(i * 6, 0);
+        ctx.stroke();
+    }
+
+    // === HYPER-REALISTIC FIST ===
+
+    // Back of hand base with gradient
+    const handGradient = ctx.createRadialGradient(0, -20, 5, 0, -15, 50);
+    handGradient.addColorStop(0, skinHighlight);
+    handGradient.addColorStop(0.4, skinWarm);
+    handGradient.addColorStop(0.8, skinBase);
+    handGradient.addColorStop(1, skinShadow);
+    ctx.fillStyle = handGradient;
+    ctx.beginPath();
+    ctx.moveTo(-38, 5);
+    ctx.quadraticCurveTo(-45, -15, -35, -40);
+    ctx.lineTo(35, -40);
+    ctx.quadraticCurveTo(45, -15, 38, 5);
+    ctx.quadraticCurveTo(0, 18, -38, 5);
+    ctx.fill();
+
+    // Hand veins
+    ctx.strokeStyle = veinBlue;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-5, 5);
+    ctx.quadraticCurveTo(-8, -15, -15, -30);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(8, 5);
+    ctx.quadraticCurveTo(12, -10, 18, -28);
+    ctx.stroke();
+
+    // Metacarpal bones visible under skin
+    ctx.strokeStyle = 'rgba(160, 130, 110, 0.4)';
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 4; i++) {
+        const boneX = -22 + i * 15;
+        ctx.beginPath();
+        ctx.moveTo(boneX + 3, 0);
+        ctx.lineTo(boneX, -32);
+        ctx.stroke();
+    }
+
+    // === FOUR FINGERS (curled into fist) ===
+    for (let i = 0; i < 4; i++) {
+        const fingerX = -26 + i * 17;
+        const fingerSize = i === 1 || i === 2 ? 1.1 : 0.95; // Middle fingers larger
+
+        // Proximal phalanx (first segment, visible as knuckle)
+        const knuckleGradient = ctx.createRadialGradient(fingerX, -48, 2, fingerX, -46, 12);
+        knuckleGradient.addColorStop(0, skinPale);
+        knuckleGradient.addColorStop(0.5, skinHighlight);
+        knuckleGradient.addColorStop(1, skinBase);
+        ctx.fillStyle = knuckleGradient;
+        ctx.beginPath();
+        ctx.ellipse(fingerX, -48, 9 * fingerSize, 11 * fingerSize, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Knuckle wrinkles
+        ctx.strokeStyle = skinDeepShadow;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.arc(fingerX, -48, 9 * fingerSize, 0.3, 2.8);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(fingerX - 6, -52);
+        ctx.quadraticCurveTo(fingerX, -55, fingerX + 6, -52);
+        ctx.stroke();
+
+        // Middle phalanx (curled under, partially visible)
+        ctx.fillStyle = skinBase;
+        ctx.beginPath();
+        ctx.ellipse(fingerX, -38, 7 * fingerSize, 8 * fingerSize, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Finger crease between segments
+        ctx.strokeStyle = skinDeepShadow;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(fingerX - 5, -42);
+        ctx.quadraticCurveTo(fingerX, -40, fingerX + 5, -42);
+        ctx.stroke();
+
+        // Distal phalanx with nail (curled under, nail barely visible)
+        ctx.fillStyle = skinShadow;
+        ctx.beginPath();
+        ctx.ellipse(fingerX + 2, -32, 5 * fingerSize, 6 * fingerSize, 0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Fingernail (just edge visible)
+        ctx.fillStyle = '#F0E6E0';
+        ctx.beginPath();
+        ctx.ellipse(fingerX + 4, -30, 3 * fingerSize, 4 * fingerSize, 0.5, 0, Math.PI);
+        ctx.fill();
+        // Nail edge
+        ctx.strokeStyle = '#D0C0B8';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.arc(fingerX + 4, -30, 3 * fingerSize, 0, Math.PI);
+        ctx.stroke();
+    }
+
+    // === THUMB (wrapped over fingers) ===
+
+    // Thenar eminence (thumb muscle on palm)
+    ctx.fillStyle = skinWarm;
+    ctx.beginPath();
+    ctx.ellipse(-35, -5, 15, 20, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Thumb metacarpal
+    ctx.fillStyle = skinBase;
+    ctx.beginPath();
+    ctx.ellipse(-42, -12, 11, 24, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Thumb proximal phalanx
+    const thumbGradient = ctx.createRadialGradient(-48, -28, 3, -46, -26, 15);
+    thumbGradient.addColorStop(0, skinHighlight);
+    thumbGradient.addColorStop(0.6, skinWarm);
+    thumbGradient.addColorStop(1, skinBase);
+    ctx.fillStyle = thumbGradient;
+    ctx.beginPath();
+    ctx.ellipse(-46, -28, 10, 14, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Thumb distal phalanx
+    ctx.fillStyle = skinWarm;
+    ctx.beginPath();
+    ctx.ellipse(-52, -42, 9, 11, -0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Thumb nail - detailed
+    ctx.fillStyle = '#F8F0EC';
+    ctx.beginPath();
+    ctx.ellipse(-54, -46, 6, 7, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Nail lunula (half moon)
+    ctx.fillStyle = '#FFF8F5';
+    ctx.beginPath();
+    ctx.ellipse(-53, -42, 4, 3, -0.2, Math.PI, Math.PI * 2);
+    ctx.fill();
+    // Nail cuticle
+    ctx.strokeStyle = skinShadow;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(-54, -46, 6, 2.8, 3.5 + Math.PI);
+    ctx.stroke();
+
+    // Thumb joint creases
+    ctx.strokeStyle = skinDeepShadow;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-50, -18);
+    ctx.quadraticCurveTo(-45, -22, -48, -26);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-54, -34);
+    ctx.quadraticCurveTo(-50, -36, -52, -40);
+    ctx.stroke();
+
+    // === SKIN TEXTURE (subtle pores) ===
+    ctx.fillStyle = 'rgba(120, 90, 70, 0.08)';
+    for (let i = 0; i < 40; i++) {
+        const px = -35 + Math.random() * 70;
+        const py = -45 + Math.random() * 50;
+        ctx.beginPath();
+        ctx.arc(px, py, 0.5 + Math.random(), 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Skin highlights (sweat/oil sheen)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.beginPath();
+    ctx.ellipse(-5, -48, 20, 8, 0.1, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
