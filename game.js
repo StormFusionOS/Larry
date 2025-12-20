@@ -158,7 +158,7 @@ class Enemy {
         // Haru Urara variants
         this.health = type === 'urara_strong' ? 50 : type === 'urara_fast' ? 20 : 30;
         this.maxHealth = this.health;
-        this.speed = type === 'urara_fast' ? 4 : type === 'urara_strong' ? 1.8 : 2.5;
+        this.speed = type === 'urara_fast' ? 3 : type === 'urara_strong' ? 1.2 : 1.8; // Slower than player (5)
         this.damage = type === 'urara_strong' ? 18 : type === 'urara_fast' ? 8 : 12;
         this.onGround = false;
         this.facing = -1;
@@ -362,6 +362,16 @@ class Boss {
         this.shakeTimer = 0;
         this.steakDropTimer = 0; // Timer for dropping health steaks
 
+        // Helicopter rescue system
+        this.isBeingRescued = false;
+        this.rescuePhase = 0; // 0=not rescuing, 1=heli approaching, 2=rope lowering, 3=lifting, 4=flying back, 5=dropping
+        this.rescueTimer = 0;
+        this.helicopterX = 0;
+        this.helicopterY = 0;
+        this.ropeLength = 0;
+        this.savedX = x; // Where to return the boss
+        this.savedY = 380; // Safe Y position on platform
+
         // Pattern system - learnable attack sequences
         this.currentPattern = 0;
         this.patternStep = 0;
@@ -410,6 +420,27 @@ class Boss {
             this.y += this.velY;
             screenShake = Math.max(0, 20 - this.deathTimer * 0.3);
             return;
+        }
+
+        // Check if boss fell off screen - trigger helicopter rescue!
+        if (this.y > 650 && !this.isBeingRescued) {
+            this.isBeingRescued = true;
+            this.rescuePhase = 1;
+            this.rescueTimer = 0;
+            this.helicopterX = this.x - 400; // Helicopter comes from left
+            this.helicopterY = 100;
+            this.ropeLength = 0;
+            this.velX = 0;
+            this.velY = 0;
+            // Save a safe return position
+            this.savedX = Math.max(2750, Math.min(2950, player.x + 200));
+            this.savedY = 380;
+        }
+
+        // Handle helicopter rescue animation
+        if (this.isBeingRescued) {
+            this.updateHelicopterRescue();
+            return; // Skip normal update during rescue
         }
 
         // Phase based on health
@@ -738,6 +769,99 @@ class Boss {
         if (this.patternTimer >= 45) { // 0.75 seconds of rest
             this.patternStep++;
             this.patternTimer = 0;
+        }
+    }
+
+    updateHelicopterRescue() {
+        this.rescueTimer++;
+
+        switch (this.rescuePhase) {
+            case 1: // Helicopter approaching
+                // Fly helicopter towards boss position
+                const targetX = this.x;
+                this.helicopterX += 6;
+
+                if (this.helicopterX >= targetX) {
+                    this.helicopterX = targetX;
+                    this.rescuePhase = 2;
+                    this.rescueTimer = 0;
+                }
+
+                // Keep boss falling but slow down
+                this.y = Math.min(this.y + 1, 700);
+                break;
+
+            case 2: // Rope lowering
+                // Lower rope towards boss
+                const targetRopeLength = this.y - this.helicopterY + 50;
+                this.ropeLength += 8;
+
+                if (this.ropeLength >= targetRopeLength) {
+                    this.ropeLength = targetRopeLength;
+                    this.rescuePhase = 3;
+                    this.rescueTimer = 0;
+                }
+                break;
+
+            case 3: // Lifting boss
+                // Pull boss up
+                this.ropeLength -= 4;
+                this.y = this.helicopterY + this.ropeLength - 50;
+
+                if (this.ropeLength <= 80) {
+                    this.ropeLength = 80;
+                    this.rescuePhase = 4;
+                    this.rescueTimer = 0;
+                }
+                break;
+
+            case 4: // Flying to safe location
+                // Fly helicopter to saved position
+                const dx = this.savedX - this.helicopterX;
+                const dy = 150 - this.helicopterY;
+
+                this.helicopterX += Math.sign(dx) * 5;
+                this.helicopterY += Math.sign(dy) * 2;
+                this.x = this.helicopterX;
+                this.y = this.helicopterY + this.ropeLength - 50;
+
+                if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+                    this.helicopterX = this.savedX;
+                    this.helicopterY = 150;
+                    this.rescuePhase = 5;
+                    this.rescueTimer = 0;
+                }
+                break;
+
+            case 5: // Dropping boss
+                // Lower boss to platform
+                this.ropeLength += 5;
+                this.y = this.helicopterY + this.ropeLength - 50;
+
+                // Check if boss reached ground
+                if (this.y >= this.savedY) {
+                    this.y = this.savedY;
+                    this.x = this.savedX;
+                    this.velY = 0;
+                    this.velX = 0;
+
+                    // Finish rescue after a short delay
+                    if (this.rescueTimer > 30) {
+                        this.isBeingRescued = false;
+                        this.rescuePhase = 0;
+                        this.rescueTimer = 0;
+                        this.ropeLength = 0;
+
+                        // Reset pattern system
+                        this.isExecutingPattern = false;
+                        this.patternCooldown = 60;
+                        this.currentAttackType = null;
+
+                        // Screen shake when dropped
+                        screenShake = 8;
+                    }
+                }
+                break;
         }
     }
 
@@ -1996,9 +2120,146 @@ function drawEnemy(enemy) {
     }
 }
 
+// Draw helicopter for boss rescue
+function drawHelicopter(boss) {
+    const hx = boss.helicopterX;
+    const hy = boss.helicopterY;
+
+    ctx.save();
+
+    // Rope from helicopter to boss
+    if (boss.ropeLength > 0) {
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(hx + 50, hy + 40);
+        ctx.lineTo(boss.x + boss.width / 2, boss.y);
+        ctx.stroke();
+
+        // Rope segments
+        ctx.strokeStyle = '#A0522D';
+        ctx.lineWidth = 2;
+        const segments = Math.floor(boss.ropeLength / 20);
+        for (let i = 1; i < segments; i++) {
+            const t = i / segments;
+            const rx = hx + 50 + (boss.x + boss.width / 2 - hx - 50) * t;
+            const ry = hy + 40 + (boss.y - hy - 40) * t;
+            ctx.beginPath();
+            ctx.moveTo(rx - 5, ry);
+            ctx.lineTo(rx + 5, ry);
+            ctx.stroke();
+        }
+
+        // Hook at the end
+        ctx.fillStyle = '#444';
+        ctx.beginPath();
+        ctx.arc(boss.x + boss.width / 2, boss.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    // Helicopter body
+    const heliGrad = ctx.createLinearGradient(hx, hy, hx, hy + 50);
+    heliGrad.addColorStop(0, '#2F4F4F');
+    heliGrad.addColorStop(0.5, '#1C3A3A');
+    heliGrad.addColorStop(1, '#0F2525');
+    ctx.fillStyle = heliGrad;
+
+    // Main body
+    ctx.beginPath();
+    ctx.ellipse(hx + 50, hy + 25, 50, 25, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cockpit
+    ctx.fillStyle = '#4682B4';
+    ctx.beginPath();
+    ctx.ellipse(hx + 75, hy + 20, 20, 18, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cockpit shine
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(hx + 80, hy + 15, 10, 8, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tail
+    ctx.fillStyle = '#2F4F4F';
+    ctx.beginPath();
+    ctx.moveTo(hx + 10, hy + 20);
+    ctx.lineTo(hx - 40, hy + 15);
+    ctx.lineTo(hx - 40, hy + 25);
+    ctx.lineTo(hx + 10, hy + 30);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tail rotor
+    ctx.fillStyle = '#444';
+    ctx.beginPath();
+    ctx.ellipse(hx - 40, hy + 20, 5, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Main rotor hub
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(hx + 50, hy, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Spinning main rotor blades
+    const rotorAngle = Date.now() / 30;
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+        const angle = rotorAngle + (i * Math.PI / 2);
+        ctx.beginPath();
+        ctx.moveTo(hx + 50, hy);
+        ctx.lineTo(hx + 50 + Math.cos(angle) * 70, hy + Math.sin(angle) * 8);
+        ctx.stroke();
+    }
+
+    // Rotor blur effect
+    ctx.fillStyle = 'rgba(100, 100, 100, 0.2)';
+    ctx.beginPath();
+    ctx.ellipse(hx + 50, hy, 70, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Skids (landing gear)
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(hx + 25, hy + 40);
+    ctx.lineTo(hx + 25, hy + 50);
+    ctx.lineTo(hx + 75, hy + 50);
+    ctx.lineTo(hx + 75, hy + 40);
+    ctx.stroke();
+
+    // "RESCUE" text on side
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 10px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('RESCUE', hx + 45, hy + 30);
+
+    // Red cross symbol
+    ctx.fillStyle = '#FF0000';
+    ctx.fillRect(hx + 20, hy + 18, 12, 4);
+    ctx.fillRect(hx + 24, hy + 14, 4, 12);
+
+    ctx.restore();
+}
+
 // Draw boss - Marioman the Furry
 function drawBoss(boss) {
-    if (boss.x + boss.width < camera.x - 100 || boss.x > camera.x + SCREEN_WIDTH + 100) return;
+    // Draw helicopter if rescuing (draw even if boss is off screen)
+    if (boss.isBeingRescued) {
+        drawHelicopter(boss);
+    }
+
+    if (boss.x + boss.width < camera.x - 100 || boss.x > camera.x + SCREEN_WIDTH + 100) {
+        // Still draw helicopter rope to boss if being rescued
+        if (!boss.isBeingRescued) return;
+    }
 
     const bx = boss.x;
     const by = boss.y;
@@ -2376,9 +2637,9 @@ function drawBoss(boss) {
 }
 
 function drawHUD() {
-    // Health bar
+    // Health bar with player name
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(15, 15, 210, 35);
+    ctx.fillRect(15, 15, 210, 55);
 
     const healthPercent = player.health / player.maxHealth;
     const healthGrad = ctx.createLinearGradient(20, 20, 200, 20);
@@ -2403,6 +2664,11 @@ function drawHUD() {
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(`${Math.max(0, Math.floor(player.health))} HP`, 120, 38);
+
+    // Player name "ToFu" under the HP bar
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 14px Impact';
+    ctx.fillText('ToFu', 120, 58);
 
     // Wave and enemies remaining
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
