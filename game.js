@@ -343,7 +343,7 @@ class Boss {
         this.velY = 0;
         this.health = 1500; // More health for longer fight
         this.maxHealth = 1500;
-        this.speed = 2.0; // Slightly slower
+        this.speed = 3.5; // Faster boss
         this.damage = 12; // Reduced from 25
         this.onGround = false;
         this.facing = -1;
@@ -480,7 +480,7 @@ class Boss {
 
         // Drop ribeye steaks periodically for player health recovery
         this.steakDropTimer++;
-        if (this.steakDropTimer >= 300) { // Drop a steak every 5 seconds
+        if (this.steakDropTimer >= 600) { // Drop a steak every 10 seconds
             this.steakDropTimer = 0;
             steaks.push({
                 x: this.x + this.width / 2 + (Math.random() - 0.5) * 100,
@@ -875,8 +875,8 @@ class Boss {
         this.velY = -3;
         this.velX = -this.facing * 2;
 
-        // 25% chance to drop a steak when hit
-        if (Math.random() < 0.25) {
+        // 10% chance to drop a steak when hit
+        if (Math.random() < 0.10) {
             steaks.push({
                 x: this.x + this.width / 2 + (Math.random() - 0.5) * 60,
                 y: this.y + 30,
