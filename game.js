@@ -143,6 +143,7 @@ let enemies = [];
 // Boss state
 let boss = null;
 let isBossFight = false;
+let fireballs = []; // Boss fireballs
 
 // Enemy class - Haru Urara style horse girls
 class Enemy {
@@ -295,6 +296,7 @@ class Boss {
         this.phase = 1; // Gets angrier as health drops
         this.introTimer = 120; // Intro animation
         this.shakeTimer = 0;
+        this.fireballCooldown = 0; // Fireball attack timer
     }
 
     update() {
@@ -367,6 +369,53 @@ class Boss {
         }
 
         if (this.attackCooldown > 0) this.attackCooldown--;
+
+        // Fireball attack - shoots fireballs at player
+        if (this.fireballCooldown <= 0 && !this.isAttacking) {
+            const fireballSpeed = 6 + this.phase;
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Shoot fireball towards player
+            fireballs.push({
+                x: this.x + this.width / 2,
+                y: this.y + 30,
+                velX: (dx / dist) * fireballSpeed,
+                velY: (dy / dist) * fireballSpeed,
+                size: 15 + this.phase * 3,
+                damage: 15 + this.phase * 5,
+                life: 180
+            });
+
+            // Shoot more fireballs in later phases
+            if (this.phase >= 2) {
+                fireballs.push({
+                    x: this.x + this.width / 2,
+                    y: this.y + 30,
+                    velX: (dx / dist) * fireballSpeed + 2,
+                    velY: (dy / dist) * fireballSpeed - 2,
+                    size: 12 + this.phase * 2,
+                    damage: 10 + this.phase * 3,
+                    life: 150
+                });
+            }
+            if (this.phase >= 3) {
+                fireballs.push({
+                    x: this.x + this.width / 2,
+                    y: this.y + 30,
+                    velX: (dx / dist) * fireballSpeed - 2,
+                    velY: (dy / dist) * fireballSpeed - 2,
+                    size: 12 + this.phase * 2,
+                    damage: 10 + this.phase * 3,
+                    life: 150
+                });
+            }
+
+            this.fireballCooldown = 90 - this.phase * 15; // Faster in later phases
+            screenShake = 4;
+        }
+        if (this.fireballCooldown > 0) this.fireballCooldown--;
 
         // Jump if player is above (more frequent in later phases)
         const jumpChance = this.phase === 3 ? 40 : this.phase === 2 ? 60 : 80;
@@ -443,11 +492,12 @@ function spawnWave(wave) {
     enemies = [];
     boss = null;
     isBossFight = false;
+    fireballs = []; // Clear fireballs
 
     if (wave === 6) {
         // Boss fight!
         isBossFight = true;
-        boss = new Boss(800, 200);
+        boss = new Boss(player.x + 400, 200);
         return;
     }
 
@@ -673,6 +723,39 @@ function update() {
         }
     }
 
+    // Update fireballs
+    fireballs = fireballs.filter(fb => {
+        fb.x += fb.velX;
+        fb.y += fb.velY;
+        fb.life--;
+
+        // Check collision with player
+        const dx = player.x + player.width/2 - fb.x;
+        const dy = player.y + player.height/2 - fb.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < fb.size + 20) {
+            player.health -= fb.damage;
+            screenShake = 10;
+            // Explosion particles
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: fb.x,
+                    y: fb.y,
+                    velX: (Math.random() - 0.5) * 10,
+                    velY: (Math.random() - 0.5) * 10,
+                    size: 4 + Math.random() * 6,
+                    color: `hsl(${Math.random() * 60}, 100%, 50%)`,
+                    life: 30
+                });
+            }
+            return false; // Remove fireball
+        }
+
+        // Remove if off screen or expired
+        return fb.life > 0 && fb.y < 700;
+    });
+
     // Remove dead enemies after animation
     enemies = enemies.filter(e => !e.isDead || e.deathTimer < 60);
 
@@ -750,6 +833,39 @@ function draw() {
     // Draw boss
     if (boss) {
         drawBoss(boss);
+    }
+
+    // Draw fireballs
+    for (const fb of fireballs) {
+        // Fireball glow
+        const fbGrad = ctx.createRadialGradient(fb.x, fb.y, 0, fb.x, fb.y, fb.size * 1.5);
+        fbGrad.addColorStop(0, 'rgba(255, 255, 200, 1)');
+        fbGrad.addColorStop(0.3, 'rgba(255, 150, 0, 0.9)');
+        fbGrad.addColorStop(0.6, 'rgba(255, 50, 0, 0.7)');
+        fbGrad.addColorStop(1, 'rgba(100, 0, 0, 0)');
+        ctx.fillStyle = fbGrad;
+        ctx.beginPath();
+        ctx.arc(fb.x, fb.y, fb.size * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Fireball core
+        ctx.fillStyle = 'rgba(255, 255, 100, 0.9)';
+        ctx.beginPath();
+        ctx.arc(fb.x, fb.y, fb.size * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Fire trail particles
+        for (let i = 0; i < 3; i++) {
+            ctx.fillStyle = `rgba(255, ${100 + Math.random() * 100}, 0, ${0.5 - i * 0.15})`;
+            ctx.beginPath();
+            ctx.arc(
+                fb.x - fb.velX * (i + 1) * 0.5 + (Math.random() - 0.5) * 5,
+                fb.y - fb.velY * (i + 1) * 0.5 + (Math.random() - 0.5) * 5,
+                fb.size * (0.4 - i * 0.1),
+                0, Math.PI * 2
+            );
+            ctx.fill();
+        }
     }
 
     // Draw player
@@ -1651,17 +1767,53 @@ function drawBoss(boss) {
 
     ctx.restore();
 
-    // Boss name display during intro
-    if (boss.introTimer > 0 && boss.introTimer < 80) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(bx - 50, by - 50, 200, 40);
+    // Hovering name above boss head (always visible, bobs up and down)
+    if (!boss.isDead) {
+        const nameY = by - 30 + Math.sin(Date.now() / 300) * 5;
+        const nameX = bx + boss.width / 2;
+
+        // Glowing background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.beginPath();
+        ctx.roundRect(nameX - 55, nameY - 15, 110, 28, 8);
+        ctx.fill();
+
+        // Glowing border
+        ctx.strokeStyle = `hsl(${(Date.now() / 20) % 360}, 100%, 50%)`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(nameX - 55, nameY - 15, 110, 28, 8);
+        ctx.stroke();
+
+        // Name text with glow
+        ctx.shadowColor = '#FF4400';
+        ctx.shadowBlur = 10;
         ctx.fillStyle = '#FF4444';
-        ctx.font = 'bold 24px Impact';
+        ctx.font = 'bold 18px Impact';
         ctx.textAlign = 'center';
-        ctx.fillText('MARIOMAN', bx + 50, by - 20);
+        ctx.fillText('MARIOMAN', nameX, nameY + 5);
+        ctx.shadowBlur = 0;
+
+        // Fire emoji decorations
+        ctx.font = '12px Arial';
+        ctx.fillText('🔥', nameX - 48, nameY + 5);
+        ctx.fillText('🔥', nameX + 42, nameY + 5);
+    }
+
+    // Boss intro announcement
+    if (boss.introTimer > 0 && boss.introTimer < 80) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(bx - 80, by - 60, 260, 50);
+        ctx.strokeStyle = '#FF4400';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(bx - 80, by - 60, 260, 50);
+        ctx.fillStyle = '#FF4444';
+        ctx.font = 'bold 28px Impact';
+        ctx.textAlign = 'center';
+        ctx.fillText('MARIOMAN', bx + 50, by - 30);
         ctx.fillStyle = '#FFD700';
         ctx.font = '14px Arial';
-        ctx.fillText('The Furry Boss', bx + 50, by - 5);
+        ctx.fillText('🔥 The Furry Boss 🔥', bx + 50, by - 12);
     }
 
     // Health bar (large, at top when in boss fight)
