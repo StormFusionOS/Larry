@@ -1,1327 +1,962 @@
-// Larry's Adventure - A Mario-style Platformer
-// Character: Short bald man in a blue shirt
+// DINO SMASHER - First Person Melee Combat Game
+// Doom-style raycasting with Hulk-smash attacks!
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // Game constants
-const GRAVITY = 0.5;
-const FRICTION = 0.8;
-const TILE_SIZE = 32;
-const CAMERA_OFFSET = 300;
-const TOTAL_LEVELS = 6;
+const SCREEN_WIDTH = 800;
+const SCREEN_HEIGHT = 600;
+const MAP_SIZE = 16;
+const TILE_SIZE = 64;
+const FOV = Math.PI / 3; // 60 degrees field of view
+const NUM_RAYS = 200;
+const MAX_DEPTH = 800;
+const WALL_HEIGHT_FACTOR = 40000;
+
+// Player settings
+const player = {
+    x: 4.5 * TILE_SIZE,
+    y: 4.5 * TILE_SIZE,
+    angle: 0,
+    speed: 3,
+    rotSpeed: 0.05,
+    health: 100,
+    maxHealth: 100,
+    kills: 0,
+    isSmashing: false,
+    smashFrame: 0,
+    smashCooldown: 0,
+    bobOffset: 0,
+    bobDirection: 1
+};
 
 // Game state
-let gameState = 'start'; // 'start', 'playing', 'gameover', 'levelcomplete', 'win'
-let score = 0;
-let coins = 0;
-let lives = 3;
-let time = 300;
-let currentLevel = 1;
-let timerInterval = null;
-let cameraX = 0;
+let gameState = 'start'; // 'start', 'playing', 'gameover', 'win'
+let currentWave = 1;
+let enemiesRemaining = 0;
+let totalKills = 0;
+let screenShake = 0;
+let bloodSplatters = [];
 
 // Input handling
 const keys = {
+    forward: false,
+    backward: false,
     left: false,
     right: false,
-    up: false
+    strafeLeft: false,
+    strafeRight: false,
+    smash: false
 };
 
-// Player object - Larry (short bald man in blue shirt)
-const player = {
-    x: 100,
-    y: 400,
-    width: 28,
-    height: 40,
-    velX: 0,
-    velY: 0,
-    speed: 4,
-    jumpStrength: 12,
-    onGround: false,
-    facingRight: true,
-    isJumping: false,
-    animFrame: 0,
-    animTimer: 0,
-    invincible: false,
-    invincibleTimer: 0
-};
+// Map layout (1 = wall, 0 = floor)
+let gameMap = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,1,1,0,0,0,0,0,0,1,1,0,0,1],
+    [1,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1],
+    [1,0,0,1,1,0,0,0,0,0,0,1,1,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
 
-// Level data
-let platforms = [];
-let bricks = [];
-let questionBlocks = [];
-let coins_array = [];
+// Enemies array
 let enemies = [];
-let pipes = [];
-let flagPole = null;
-let levelWidth = 3200;
-let levelTheme = 'overworld'; // 'overworld', 'underground', 'sky', 'castle'
 
-// Level configurations
-const levelConfigs = {
-    1: { name: '1-1', theme: 'overworld', width: 3200, time: 300 },
-    2: { name: '1-2', theme: 'underground', width: 3500, time: 350 },
-    3: { name: '2-1', theme: 'overworld', width: 3800, time: 350 },
-    4: { name: '2-2', theme: 'sky', width: 3200, time: 300 },
-    5: { name: '3-1', theme: 'castle', width: 4000, time: 400 },
-    6: { name: '3-2', theme: 'castle', width: 4500, time: 450 }
-};
-
-// Helper function to add ground
-function addGround(startX, endX, gapStart = null, gapEnd = null) {
-    for (let x = startX; x < endX; x += TILE_SIZE) {
-        if (gapStart !== null && x >= gapStart && x < gapEnd) continue;
-        platforms.push({ x: x, y: 568, width: TILE_SIZE, height: TILE_SIZE, type: 'ground' });
-        platforms.push({ x: x, y: 536, width: TILE_SIZE, height: TILE_SIZE, type: 'underground' });
+// Enemy class
+class Enemy {
+    constructor(x, y, type = 'demon') {
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        this.health = type === 'demon' ? 30 : type === 'imp' ? 20 : 50;
+        this.maxHealth = this.health;
+        this.speed = type === 'demon' ? 1.5 : type === 'imp' ? 2.5 : 1;
+        this.damage = type === 'demon' ? 15 : type === 'imp' ? 10 : 25;
+        this.size = type === 'ogre' ? 40 : 30;
+        this.isHit = false;
+        this.hitTimer = 0;
+        this.attackCooldown = 0;
+        this.isDead = false;
+        this.deathTimer = 0;
+        this.animFrame = 0;
+        this.animTimer = 0;
     }
-}
 
-// Helper function to add brick staircase
-function addStaircase(startX, startY, height, ascending = true) {
-    for (let i = 0; i < height; i++) {
-        const steps = ascending ? i + 1 : height - i;
-        for (let j = 0; j < steps; j++) {
-            bricks.push({ x: startX + i * TILE_SIZE, y: startY - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
+    update() {
+        if (this.isDead) {
+            this.deathTimer++;
+            return;
+        }
+
+        // Animation
+        this.animTimer++;
+        if (this.animTimer > 10) {
+            this.animTimer = 0;
+            this.animFrame = (this.animFrame + 1) % 2;
+        }
+
+        // Hit flash timer
+        if (this.isHit) {
+            this.hitTimer--;
+            if (this.hitTimer <= 0) {
+                this.isHit = false;
+            }
+        }
+
+        // Attack cooldown
+        if (this.attackCooldown > 0) {
+            this.attackCooldown--;
+        }
+
+        // Move towards player
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 40) {
+            // Move towards player
+            const moveX = (dx / dist) * this.speed;
+            const moveY = (dy / dist) * this.speed;
+
+            // Check collision with walls
+            const newX = this.x + moveX;
+            const newY = this.y + moveY;
+
+            const mapX = Math.floor(newX / TILE_SIZE);
+            const mapY = Math.floor(newY / TILE_SIZE);
+
+            if (mapX >= 0 && mapX < MAP_SIZE && mapY >= 0 && mapY < MAP_SIZE) {
+                if (gameMap[mapY][mapX] === 0) {
+                    this.x = newX;
+                    this.y = newY;
+                }
+            }
+        } else if (this.attackCooldown <= 0) {
+            // Attack player
+            player.health -= this.damage;
+            this.attackCooldown = 60;
+            screenShake = 10;
+
+            // Add blood splatter effect
+            for (let i = 0; i < 5; i++) {
+                bloodSplatters.push({
+                    x: Math.random() * SCREEN_WIDTH,
+                    y: Math.random() * SCREEN_HEIGHT,
+                    size: Math.random() * 50 + 20,
+                    alpha: 0.8
+                });
+            }
         }
     }
-}
 
-// Level 1: Grassy Plains - Easy intro
-function initLevel1() {
-    levelTheme = 'overworld';
-    levelWidth = 3200;
+    takeDamage(amount) {
+        this.health -= amount;
+        this.isHit = true;
+        this.hitTimer = 10;
 
-    // Ground with one gap
-    addGround(0, 2000);
-    addGround(2128, 3200);
+        if (this.health <= 0) {
+            this.isDead = true;
+            player.kills++;
+            totalKills++;
+            enemiesRemaining--;
+            screenShake = 15;
 
-    // First set of blocks
-    bricks.push({ x: 256, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false });
-    questionBlocks.push({ x: 288, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    bricks.push({ x: 320, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false });
-    questionBlocks.push({ x: 352, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    bricks.push({ x: 384, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false });
-
-    questionBlocks.push({ x: 320, y: 272, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'multi' });
-
-    // Second set of blocks
-    bricks.push({ x: 608, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false });
-    questionBlocks.push({ x: 640, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    bricks.push({ x: 672, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false });
-
-    // Staircases
-    addStaircase(896, 536, 4, true);
-    addStaircase(1024, 536, 4, false);
-
-    // More blocks
-    questionBlocks.push({ x: 1200, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 1232, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-
-    // Long brick platform
-    for (let i = 0; i < 8; i++) {
-        bricks.push({ x: 1344 + i * TILE_SIZE, y: 336, width: TILE_SIZE, height: TILE_SIZE, hit: false });
-    }
-
-    // Pipes
-    pipes.push({ x: 448, y: 472, width: 64, height: 96 });
-    pipes.push({ x: 768, y: 440, width: 64, height: 128 });
-    pipes.push({ x: 1152, y: 472, width: 64, height: 96 });
-    pipes.push({ x: 1600, y: 408, width: 64, height: 160 });
-
-    // Final staircase
-    addStaircase(1760, 536, 8, true);
-
-    // Coins
-    coins_array.push({ x: 288, y: 340, width: 24, height: 24, collected: false });
-    coins_array.push({ x: 352, y: 340, width: 24, height: 24, collected: false });
-    coins_array.push({ x: 640, y: 340, width: 24, height: 24, collected: false });
-    for (let i = 0; i < 6; i++) {
-        coins_array.push({ x: 1360 + i * 40, y: 290, width: 24, height: 24, collected: false });
-    }
-
-    // Enemies
-    enemies.push({ x: 352, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 640, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 800, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 550, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-
-    flagPole = { x: 2900, y: 200, width: 8, height: 368 };
-}
-
-// Level 2: Underground Caverns
-function initLevel2() {
-    levelTheme = 'underground';
-    levelWidth = 3500;
-
-    // Ground with multiple gaps
-    addGround(0, 800);
-    addGround(864, 1400);
-    addGround(1528, 2200);
-    addGround(2328, 3500);
-
-    // Ceiling bricks (underground feel)
-    for (let x = 0; x < 3500; x += TILE_SIZE) {
-        bricks.push({ x: x, y: 32, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-        bricks.push({ x: x, y: 64, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-
-    // Floating platforms over gaps
-    for (let i = 0; i < 3; i++) {
-        bricks.push({ x: 816 + i * TILE_SIZE, y: 450, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 4; i++) {
-        bricks.push({ x: 1430 + i * TILE_SIZE, y: 420, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 3; i++) {
-        bricks.push({ x: 2230 + i * TILE_SIZE, y: 480, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-
-    // Question blocks
-    questionBlocks.push({ x: 300, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 500, y: 350, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 1000, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 1700, y: 380, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'multi' });
-
-    // Brick platforms
-    for (let i = 0; i < 6; i++) {
-        bricks.push({ x: 600 + i * TILE_SIZE, y: 380, width: TILE_SIZE, height: TILE_SIZE, hit: false });
-    }
-
-    // Pipes (some coming from ceiling)
-    pipes.push({ x: 200, y: 472, width: 64, height: 96 });
-    pipes.push({ x: 1100, y: 440, width: 64, height: 128 });
-    pipes.push({ x: 1900, y: 472, width: 64, height: 96 });
-    pipes.push({ x: 2700, y: 408, width: 64, height: 160 });
-
-    // Coins
-    for (let i = 0; i < 5; i++) {
-        coins_array.push({ x: 616 + i * 40, y: 330, width: 24, height: 24, collected: false });
-    }
-    for (let i = 0; i < 4; i++) {
-        coins_array.push({ x: 1446 + i * 32, y: 370, width: 24, height: 24, collected: false });
-    }
-
-    // More enemies in underground
-    enemies.push({ x: 300, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 500, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 700, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 1000, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 1200, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 1800, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 2500, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-
-    flagPole = { x: 3300, y: 200, width: 8, height: 368 };
-}
-
-// Level 3: Hill Country - More platforming
-function initLevel3() {
-    levelTheme = 'overworld';
-    levelWidth = 3800;
-
-    // Ground with gaps
-    addGround(0, 600);
-    addGround(700, 1200);
-    addGround(1350, 1800);
-    addGround(1950, 2500);
-    addGround(2650, 3800);
-
-    // Elevated platforms
-    for (let i = 0; i < 4; i++) {
-        bricks.push({ x: 620 + i * TILE_SIZE, y: 470, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 3; i++) {
-        bricks.push({ x: 1220 + i * TILE_SIZE, y: 440, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 5; i++) {
-        bricks.push({ x: 1820 + i * TILE_SIZE, y: 450, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 4; i++) {
-        bricks.push({ x: 2550 + i * TILE_SIZE, y: 420, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-
-    // Question blocks
-    questionBlocks.push({ x: 200, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 400, y: 350, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 900, y: 380, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 1500, y: 350, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'multi' });
-    questionBlocks.push({ x: 2100, y: 380, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-
-    // Multiple staircases
-    addStaircase(450, 536, 3, true);
-    addStaircase(1050, 536, 4, true);
-    addStaircase(1600, 536, 3, false);
-    addStaircase(2300, 536, 5, true);
-    addStaircase(3000, 536, 6, true);
-
-    // Pipes
-    pipes.push({ x: 150, y: 472, width: 64, height: 96 });
-    pipes.push({ x: 850, y: 440, width: 64, height: 128 });
-    pipes.push({ x: 1700, y: 472, width: 64, height: 96 });
-    pipes.push({ x: 2800, y: 376, width: 64, height: 192 });
-
-    // Coins across gaps
-    for (let i = 0; i < 3; i++) {
-        coins_array.push({ x: 636 + i * 40, y: 420, width: 24, height: 24, collected: false });
-    }
-    for (let i = 0; i < 4; i++) {
-        coins_array.push({ x: 1836 + i * 40, y: 400, width: 24, height: 24, collected: false });
-    }
-    coins_array.push({ x: 1280, y: 390, width: 24, height: 24, collected: false });
-
-    // More enemies
-    enemies.push({ x: 300, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 500, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 800, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 1000, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 1400, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 1600, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 2000, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 2200, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 2700, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-
-    flagPole = { x: 3600, y: 200, width: 8, height: 368 };
-}
-
-// Level 4: Sky World - Floating platforms
-function initLevel4() {
-    levelTheme = 'sky';
-    levelWidth = 3200;
-
-    // Minimal ground - mostly platforms
-    addGround(0, 300);
-    addGround(2900, 3200);
-
-    // Cloud/floating platforms (using bricks styled as clouds)
-    const cloudPlatforms = [
-        { x: 250, y: 480 }, { x: 400, y: 420 }, { x: 550, y: 360 },
-        { x: 700, y: 400 }, { x: 900, y: 450 }, { x: 1050, y: 380 },
-        { x: 1200, y: 320 }, { x: 1400, y: 380 }, { x: 1550, y: 440 },
-        { x: 1700, y: 360 }, { x: 1900, y: 420 }, { x: 2050, y: 350 },
-        { x: 2200, y: 400 }, { x: 2400, y: 460 }, { x: 2600, y: 400 },
-        { x: 2750, y: 480 }
-    ];
-
-    cloudPlatforms.forEach(plat => {
-        for (let i = 0; i < 4; i++) {
-            bricks.push({ x: plat.x + i * TILE_SIZE, y: plat.y, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
+            // Blood explosion
+            for (let i = 0; i < 8; i++) {
+                bloodSplatters.push({
+                    x: Math.random() * SCREEN_WIDTH,
+                    y: SCREEN_HEIGHT - Math.random() * 200,
+                    size: Math.random() * 30 + 10,
+                    alpha: 0.6
+                });
+            }
         }
-    });
+    }
 
-    // Question blocks floating
-    questionBlocks.push({ x: 450, y: 320, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 750, y: 300, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 1100, y: 280, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'multi' });
-    questionBlocks.push({ x: 1450, y: 280, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 1950, y: 300, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 2250, y: 300, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
+    getDistanceToPlayer() {
+        const dx = player.x - this.x;
+        const dy = player.y - this.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
 
-    // Coins along platforms
-    cloudPlatforms.forEach((plat, idx) => {
-        if (idx % 2 === 0) {
-            coins_array.push({ x: plat.x + 48, y: plat.y - 50, width: 24, height: 24, collected: false });
-        }
-    });
-
-    // Flying enemies (koopas only - they have wings in spirit)
-    enemies.push({ x: 500, y: 380, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 950, y: 410, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 1300, y: 340, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 1600, y: 400, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 2000, y: 380, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 2500, y: 420, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-
-    flagPole = { x: 3000, y: 200, width: 8, height: 368 };
+    getAngleToPlayer() {
+        const dx = this.x - player.x;
+        const dy = this.y - player.y;
+        return Math.atan2(dy, dx);
+    }
 }
 
-// Level 5: Castle Entrance - Tricky jumps
-function initLevel5() {
-    levelTheme = 'castle';
-    levelWidth = 4000;
-
-    // Ground with lava gaps (deadly)
-    addGround(0, 500);
-    addGround(600, 1000);
-    addGround(1150, 1600);
-    addGround(1800, 2300);
-    addGround(2500, 3000);
-    addGround(3200, 4000);
-
-    // Castle brick platforms
-    for (let i = 0; i < 5; i++) {
-        bricks.push({ x: 520 + i * TILE_SIZE, y: 480, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 4; i++) {
-        bricks.push({ x: 1020 + i * TILE_SIZE, y: 450, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 6; i++) {
-        bricks.push({ x: 1650 + i * TILE_SIZE, y: 460, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 4; i++) {
-        bricks.push({ x: 2350 + i * TILE_SIZE, y: 440, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 5; i++) {
-        bricks.push({ x: 3050 + i * TILE_SIZE, y: 470, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-
-    // Castle walls/obstacles
-    for (let j = 0; j < 4; j++) {
-        bricks.push({ x: 800, y: 440 - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let j = 0; j < 3; j++) {
-        bricks.push({ x: 1400, y: 472 - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let j = 0; j < 5; j++) {
-        bricks.push({ x: 2100, y: 440 - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-
-    // Question blocks
-    questionBlocks.push({ x: 300, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 700, y: 350, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 1300, y: 380, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'multi' });
-    questionBlocks.push({ x: 2000, y: 360, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 2700, y: 380, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-
-    // Staircases
-    addStaircase(350, 536, 4, true);
-    addStaircase(1900, 536, 5, true);
-    addStaircase(3400, 536, 8, true);
-
-    // Coins
-    for (let i = 0; i < 4; i++) {
-        coins_array.push({ x: 536 + i * 40, y: 430, width: 24, height: 24, collected: false });
-    }
-    for (let i = 0; i < 5; i++) {
-        coins_array.push({ x: 1666 + i * 40, y: 410, width: 24, height: 24, collected: false });
-    }
-
-    // Many enemies
-    enemies.push({ x: 250, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 400, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 700, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 900, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 1250, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 1400, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 1550, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 1950, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 2150, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 2600, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 2800, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-
-    flagPole = { x: 3800, y: 200, width: 8, height: 368 };
-}
-
-// Level 6: Final Castle - The ultimate challenge
-function initLevel6() {
-    levelTheme = 'castle';
-    levelWidth = 4500;
-
-    // Ground with many gaps
-    addGround(0, 400);
-    addGround(500, 900);
-    addGround(1050, 1400);
-    addGround(1550, 1900);
-    addGround(2100, 2500);
-    addGround(2700, 3100);
-    addGround(3300, 3700);
-    addGround(3900, 4500);
-
-    // Platforms over gaps
-    for (let i = 0; i < 3; i++) {
-        bricks.push({ x: 420 + i * TILE_SIZE, y: 480, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 4; i++) {
-        bricks.push({ x: 920 + i * TILE_SIZE, y: 450, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 3; i++) {
-        bricks.push({ x: 1420 + i * TILE_SIZE, y: 470, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 5; i++) {
-        bricks.push({ x: 1950 + i * TILE_SIZE, y: 440, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 4; i++) {
-        bricks.push({ x: 2550 + i * TILE_SIZE, y: 460, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 3; i++) {
-        bricks.push({ x: 3150 + i * TILE_SIZE, y: 450, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let i = 0; i < 4; i++) {
-        bricks.push({ x: 3750 + i * TILE_SIZE, y: 470, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-
-    // Walls/pillars
-    for (let j = 0; j < 4; j++) {
-        bricks.push({ x: 700, y: 440 - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let j = 0; j < 5; j++) {
-        bricks.push({ x: 1200, y: 440 - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let j = 0; j < 4; j++) {
-        bricks.push({ x: 1700, y: 440 - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let j = 0; j < 6; j++) {
-        bricks.push({ x: 2300, y: 440 - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let j = 0; j < 4; j++) {
-        bricks.push({ x: 2900, y: 440 - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-    for (let j = 0; j < 5; j++) {
-        bricks.push({ x: 3500, y: 440 - j * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE, hit: false, solid: true });
-    }
-
-    // Question blocks - scattered rewards
-    questionBlocks.push({ x: 250, y: 400, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 600, y: 350, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 1100, y: 360, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'multi' });
-    questionBlocks.push({ x: 1600, y: 380, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 2200, y: 350, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-    questionBlocks.push({ x: 2800, y: 360, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'multi' });
-    questionBlocks.push({ x: 3400, y: 380, width: TILE_SIZE, height: TILE_SIZE, hit: false, content: 'coin' });
-
-    // Final staircase
-    addStaircase(4000, 536, 10, true);
-
-    // Coins
-    for (let i = 0; i < 3; i++) {
-        coins_array.push({ x: 436 + i * 32, y: 430, width: 24, height: 24, collected: false });
-    }
-    for (let i = 0; i < 4; i++) {
-        coins_array.push({ x: 1966 + i * 40, y: 390, width: 24, height: 24, collected: false });
-    }
-    for (let i = 0; i < 3; i++) {
-        coins_array.push({ x: 3166 + i * 32, y: 400, width: 24, height: 24, collected: false });
-    }
-
-    // Maximum enemies
-    enemies.push({ x: 200, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 350, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 600, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 800, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 1100, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 1300, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 1600, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 1800, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 2200, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 2400, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 2800, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 3000, y: 524, width: 32, height: 40, velX: -1, alive: true, type: 'koopa' });
-    enemies.push({ x: 3400, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-    enemies.push({ x: 3600, y: 528, width: 32, height: 32, velX: -1, alive: true, type: 'goomba' });
-
-    flagPole = { x: 4300, y: 200, width: 8, height: 368 };
-}
-
-// Initialize level based on current level number
-function initLevel() {
-    platforms = [];
-    bricks = [];
-    questionBlocks = [];
-    coins_array = [];
+// Spawn enemies for current wave
+function spawnWave() {
     enemies = [];
-    pipes = [];
-    flagPole = null;
+    const numEnemies = 3 + currentWave * 2;
+    enemiesRemaining = numEnemies;
 
-    const config = levelConfigs[currentLevel];
-    levelWidth = config.width;
-    levelTheme = config.theme;
+    for (let i = 0; i < numEnemies; i++) {
+        let x, y;
+        let validPos = false;
 
-    switch (currentLevel) {
-        case 1: initLevel1(); break;
-        case 2: initLevel2(); break;
-        case 3: initLevel3(); break;
-        case 4: initLevel4(); break;
-        case 5: initLevel5(); break;
-        case 6: initLevel6(); break;
-    }
-}
+        while (!validPos) {
+            x = (Math.random() * 12 + 2) * TILE_SIZE;
+            y = (Math.random() * 12 + 2) * TILE_SIZE;
 
-// Draw Larry (short bald man in blue shirt)
-function drawPlayer() {
-    ctx.save();
-    let screenX = player.x - cameraX;
+            const mapX = Math.floor(x / TILE_SIZE);
+            const mapY = Math.floor(y / TILE_SIZE);
 
-    if (player.invincible && Math.floor(player.invincibleTimer / 5) % 2 === 0) {
-        ctx.globalAlpha = 0.5;
-    }
+            // Make sure not in a wall and not too close to player
+            const distToPlayer = Math.sqrt(
+                Math.pow(x - player.x, 2) + Math.pow(y - player.y, 2)
+            );
 
-    // Flip if facing left
-    if (!player.facingRight) {
-        ctx.translate(screenX + player.width, 0);
-        ctx.scale(-1, 1);
-        screenX = 0;
-    } else {
-        ctx.translate(screenX, 0);
-    }
-
-    // Draw Larry - a short bald man in blue shirt
-    const x = 0;
-    const y = player.y;
-
-    // Head (bald, skin color)
-    ctx.fillStyle = '#FFDAB9';
-    ctx.beginPath();
-    ctx.arc(x + player.width / 2, y + 10, 12, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Slight shine on bald head
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.beginPath();
-    ctx.arc(x + player.width / 2 - 3, y + 6, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Eyes
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.arc(x + player.width / 2 - 4, y + 10, 2, 0, Math.PI * 2);
-    ctx.arc(x + player.width / 2 + 4, y + 10, 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Eyebrows
-    ctx.strokeStyle = '#654321';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(x + player.width / 2 - 7, y + 6);
-    ctx.lineTo(x + player.width / 2 - 2, y + 7);
-    ctx.moveTo(x + player.width / 2 + 2, y + 7);
-    ctx.lineTo(x + player.width / 2 + 7, y + 6);
-    ctx.stroke();
-
-    // Small smile
-    ctx.strokeStyle = '#8B4513';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(x + player.width / 2, y + 13, 4, 0.1 * Math.PI, 0.9 * Math.PI);
-    ctx.stroke();
-
-    // Body - Blue shirt
-    ctx.fillStyle = '#4169E1';
-    ctx.fillRect(x + 4, y + 20, player.width - 8, 14);
-
-    // Shirt collar
-    ctx.fillStyle = '#3158D3';
-    ctx.fillRect(x + 8, y + 20, player.width - 16, 3);
-
-    // Arms (skin)
-    ctx.fillStyle = '#FFDAB9';
-    if (player.onGround && (keys.left || keys.right)) {
-        const armOffset = Math.sin(player.animFrame * 0.3) * 3;
-        ctx.fillRect(x + 1, y + 22 + armOffset, 4, 10);
-        ctx.fillRect(x + player.width - 5, y + 22 - armOffset, 4, 10);
-    } else {
-        ctx.fillRect(x + 1, y + 22, 4, 10);
-        ctx.fillRect(x + player.width - 5, y + 22, 4, 10);
-    }
-
-    // Pants (darker blue/navy)
-    ctx.fillStyle = '#1a1a4e';
-    ctx.fillRect(x + 6, y + 34, player.width - 12, 6);
-
-    // Legs
-    ctx.fillStyle = '#1a1a4e';
-    if (player.onGround && (keys.left || keys.right)) {
-        const legOffset = Math.sin(player.animFrame * 0.3) * 4;
-        ctx.fillRect(x + 6, y + 34, 6, 6 + legOffset);
-        ctx.fillRect(x + player.width - 12, y + 34, 6, 6 - legOffset);
-    } else if (!player.onGround) {
-        ctx.fillRect(x + 4, y + 34, 6, 4);
-        ctx.fillRect(x + player.width - 10, y + 34, 6, 4);
-    } else {
-        ctx.fillRect(x + 6, y + 34, 6, 6);
-        ctx.fillRect(x + player.width - 12, y + 34, 6, 6);
-    }
-
-    // Shoes (brown)
-    ctx.fillStyle = '#8B4513';
-    if (player.onGround && (keys.left || keys.right)) {
-        const legOffset = Math.sin(player.animFrame * 0.3) * 4;
-        ctx.fillRect(x + 4, y + 36 + Math.max(0, legOffset), 8, 4);
-        ctx.fillRect(x + player.width - 12, y + 36 + Math.max(0, -legOffset), 8, 4);
-    } else {
-        ctx.fillRect(x + 4, y + 36, 8, 4);
-        ctx.fillRect(x + player.width - 12, y + 36, 8, 4);
-    }
-
-    ctx.restore();
-}
-
-// Get sky color based on theme
-function getSkyColor() {
-    switch (levelTheme) {
-        case 'underground': return '#000000';
-        case 'sky': return '#87CEEB';
-        case 'castle': return '#1a1a2e';
-        default: return '#5c94fc';
-    }
-}
-
-// Get ground colors based on theme
-function getGroundColors() {
-    switch (levelTheme) {
-        case 'underground':
-            return { top: '#4a4a4a', dirt: '#2d2d2d', detail: '#5a5a5a' };
-        case 'castle':
-            return { top: '#4a4a4a', dirt: '#2d2d2d', detail: '#5a5a5a' };
-        case 'sky':
-            return { top: '#ffffff', dirt: '#e0e0e0', detail: '#f0f0f0' };
-        default:
-            return { top: '#5abd39', dirt: '#c84c0c', detail: '#7dd35b' };
-    }
-}
-
-// Draw ground and platforms
-function drawPlatforms() {
-    const colors = getGroundColors();
-    platforms.forEach(platform => {
-        const screenX = platform.x - cameraX;
-        if (screenX > -TILE_SIZE && screenX < canvas.width + TILE_SIZE) {
-            if (platform.type === 'ground') {
-                ctx.fillStyle = colors.top;
-                ctx.fillRect(screenX, platform.y, platform.width, 8);
-                ctx.fillStyle = colors.dirt;
-                ctx.fillRect(screenX, platform.y + 8, platform.width, platform.height - 8);
-                ctx.fillStyle = colors.detail;
-                ctx.fillRect(screenX + 2, platform.y, 4, 4);
-                ctx.fillRect(screenX + 14, platform.y + 2, 6, 3);
-                ctx.fillRect(screenX + 26, platform.y, 4, 5);
-            } else {
-                ctx.fillStyle = colors.dirt;
-                ctx.fillRect(screenX, platform.y, platform.width, platform.height);
-                ctx.fillStyle = levelTheme === 'underground' || levelTheme === 'castle' ? '#1a1a1a' : '#a33c08';
-                ctx.fillRect(screenX + 2, platform.y + 2, 8, 8);
-                ctx.fillRect(screenX + 20, platform.y + 18, 10, 10);
+            if (gameMap[mapY][mapX] === 0 && distToPlayer > 200) {
+                validPos = true;
             }
         }
-    });
-}
 
-// Draw bricks
-function drawBricks() {
-    const brickColor = levelTheme === 'underground' || levelTheme === 'castle' ? '#4a4a4a' : '#c84c0c';
-    bricks.forEach(brick => {
-        const screenX = brick.x - cameraX;
-        if (screenX > -TILE_SIZE && screenX < canvas.width + TILE_SIZE) {
-            ctx.fillStyle = brickColor;
-            ctx.fillRect(screenX, brick.y, brick.width, brick.height);
+        // Randomize enemy types based on wave
+        let type = 'imp';
+        const roll = Math.random();
+        if (currentWave >= 2 && roll > 0.5) type = 'demon';
+        if (currentWave >= 3 && roll > 0.8) type = 'ogre';
 
-            ctx.fillStyle = '#000';
-            ctx.fillRect(screenX, brick.y + 7, brick.width, 2);
-            ctx.fillRect(screenX, brick.y + 15, brick.width, 2);
-            ctx.fillRect(screenX, brick.y + 23, brick.width, 2);
-            ctx.fillRect(screenX + 15, brick.y, 2, 8);
-            ctx.fillRect(screenX + 7, brick.y + 8, 2, 8);
-            ctx.fillRect(screenX + 23, brick.y + 8, 2, 8);
-            ctx.fillRect(screenX + 15, brick.y + 16, 2, 8);
-            ctx.fillRect(screenX + 7, brick.y + 24, 2, 8);
-            ctx.fillRect(screenX + 23, brick.y + 24, 2, 8);
-        }
-    });
-}
-
-// Draw question blocks
-function drawQuestionBlocks() {
-    questionBlocks.forEach(block => {
-        const screenX = block.x - cameraX;
-        if (screenX > -TILE_SIZE && screenX < canvas.width + TILE_SIZE) {
-            if (block.hit) {
-                ctx.fillStyle = '#8B4513';
-                ctx.fillRect(screenX, block.y, block.width, block.height);
-                ctx.strokeStyle = '#5D2E0C';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(screenX + 2, block.y + 2, block.width - 4, block.height - 4);
-            } else {
-                ctx.fillStyle = '#FFD700';
-                ctx.fillRect(screenX, block.y, block.width, block.height);
-                ctx.strokeStyle = '#B8860B';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(screenX + 2, block.y + 2, block.width - 4, block.height - 4);
-                ctx.fillStyle = '#8B4513';
-                ctx.font = 'bold 20px Arial';
-                ctx.textAlign = 'center';
-                const bounce = Math.sin(Date.now() / 200) * 2;
-                ctx.fillText('?', screenX + block.width / 2, block.y + 22 + bounce);
-            }
-        }
-    });
-}
-
-// Draw coins
-function drawCoins() {
-    coins_array.forEach(coin => {
-        if (!coin.collected) {
-            const screenX = coin.x - cameraX;
-            if (screenX > -TILE_SIZE && screenX < canvas.width + TILE_SIZE) {
-                const wobble = Math.sin(Date.now() / 150) * 0.2 + 0.8;
-                ctx.save();
-                ctx.translate(screenX + coin.width / 2, coin.y + coin.height / 2);
-                ctx.scale(wobble, 1);
-                ctx.fillStyle = '#FFD700';
-                ctx.beginPath();
-                ctx.arc(0, 0, 10, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#FFA500';
-                ctx.beginPath();
-                ctx.arc(0, 0, 6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#FFD700';
-                ctx.font = 'bold 10px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('★', 0, 4);
-                ctx.restore();
-            }
-        }
-    });
-}
-
-// Draw pipes
-function drawPipes() {
-    pipes.forEach(pipe => {
-        const screenX = pipe.x - cameraX;
-        if (screenX > -pipe.width && screenX < canvas.width + pipe.width) {
-            ctx.fillStyle = '#228B22';
-            ctx.fillRect(screenX + 4, pipe.y + 32, pipe.width - 8, pipe.height - 32);
-            ctx.fillStyle = '#32CD32';
-            ctx.fillRect(screenX, pipe.y, pipe.width, 32);
-            ctx.fillStyle = '#90EE90';
-            ctx.fillRect(screenX + 4, pipe.y + 4, 8, 24);
-            ctx.fillRect(screenX + 8, pipe.y + 36, 6, pipe.height - 44);
-            ctx.fillStyle = '#006400';
-            ctx.fillRect(screenX + pipe.width - 12, pipe.y + 4, 8, 24);
-            ctx.fillRect(screenX + pipe.width - 14, pipe.y + 36, 6, pipe.height - 44);
-            ctx.fillRect(screenX, pipe.y + 28, pipe.width, 4);
-        }
-    });
-}
-
-// Draw enemies
-function drawEnemies() {
-    enemies.forEach(enemy => {
-        if (enemy.alive) {
-            const screenX = enemy.x - cameraX;
-            if (screenX > -enemy.width && screenX < canvas.width + enemy.width) {
-                if (enemy.type === 'goomba') {
-                    ctx.fillStyle = '#8B4513';
-                    ctx.beginPath();
-                    ctx.arc(screenX + enemy.width / 2, enemy.y + 10, 14, Math.PI, 0);
-                    ctx.fill();
-                    ctx.fillStyle = '#D2691E';
-                    ctx.fillRect(screenX + 4, enemy.y + 10, enemy.width - 8, 14);
-                    ctx.fillStyle = '#8B4513';
-                    const footOffset = Math.sin(Date.now() / 100) * 3;
-                    ctx.fillRect(screenX + 2, enemy.y + 22 + footOffset, 10, 8);
-                    ctx.fillRect(screenX + enemy.width - 12, enemy.y + 22 - footOffset, 10, 8);
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(screenX + enemy.width / 2 - 5, enemy.y + 8, 4, 0, Math.PI * 2);
-                    ctx.arc(screenX + enemy.width / 2 + 5, enemy.y + 8, 4, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.arc(screenX + enemy.width / 2 - 5 + enemy.velX, enemy.y + 9, 2, 0, Math.PI * 2);
-                    ctx.arc(screenX + enemy.width / 2 + 5 + enemy.velX, enemy.y + 9, 2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#8B4513';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(screenX + enemy.width / 2 - 9, enemy.y + 3);
-                    ctx.lineTo(screenX + enemy.width / 2 - 2, enemy.y + 5);
-                    ctx.moveTo(screenX + enemy.width / 2 + 2, enemy.y + 5);
-                    ctx.lineTo(screenX + enemy.width / 2 + 9, enemy.y + 3);
-                    ctx.stroke();
-                } else if (enemy.type === 'koopa') {
-                    ctx.fillStyle = '#228B22';
-                    ctx.beginPath();
-                    ctx.ellipse(screenX + enemy.width / 2, enemy.y + 20, 14, 18, 0, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#006400';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(screenX + enemy.width / 2, enemy.y + 4);
-                    ctx.lineTo(screenX + enemy.width / 2, enemy.y + 36);
-                    ctx.moveTo(screenX + 6, enemy.y + 20);
-                    ctx.lineTo(screenX + enemy.width - 6, enemy.y + 20);
-                    ctx.stroke();
-                    ctx.fillStyle = '#90EE90';
-                    ctx.beginPath();
-                    ctx.arc(screenX + enemy.width / 2 + (enemy.velX > 0 ? 10 : -10), enemy.y + 6, 8, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(screenX + enemy.width / 2 + (enemy.velX > 0 ? 12 : -8), enemy.y + 4, 3, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.arc(screenX + enemy.width / 2 + (enemy.velX > 0 ? 13 : -7), enemy.y + 4, 1.5, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#FFD700';
-                    const footOffset = Math.sin(Date.now() / 100) * 2;
-                    ctx.fillRect(screenX + 4, enemy.y + 34 + footOffset, 8, 6);
-                    ctx.fillRect(screenX + enemy.width - 12, enemy.y + 34 - footOffset, 8, 6);
-                }
-            }
-        }
-    });
-}
-
-// Draw flag pole
-function drawFlagPole() {
-    if (flagPole) {
-        const screenX = flagPole.x - cameraX;
-        ctx.fillStyle = '#228B22';
-        ctx.fillRect(screenX, flagPole.y, flagPole.width, flagPole.height);
-        ctx.fillStyle = '#32CD32';
-        ctx.beginPath();
-        ctx.arc(screenX + flagPole.width / 2, flagPole.y, 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#FF0000';
-        ctx.beginPath();
-        ctx.moveTo(screenX + flagPole.width, flagPole.y + 20);
-        ctx.lineTo(screenX + flagPole.width + 50, flagPole.y + 40);
-        ctx.lineTo(screenX + flagPole.width, flagPole.y + 60);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#FFD700';
-        ctx.font = 'bold 16px Arial';
-        ctx.fillText('★', screenX + flagPole.width + 15, flagPole.y + 46);
-        ctx.fillStyle = '#8B4513';
-        ctx.fillRect(screenX - 20, flagPole.y + flagPole.height - 32, 48, 32);
+        enemies.push(new Enemy(x, y, type));
     }
 }
 
-// Draw background elements
-function drawBackground() {
-    if (levelTheme === 'underground' || levelTheme === 'castle') {
-        // Dark background, no clouds
-        return;
-    }
-
-    const clouds = [
-        { x: 100, y: 80, scale: 1 },
-        { x: 400, y: 60, scale: 1.2 },
-        { x: 700, y: 100, scale: 0.8 },
-        { x: 1100, y: 70, scale: 1.1 },
-        { x: 1500, y: 90, scale: 0.9 },
-        { x: 1900, y: 65, scale: 1.3 },
-        { x: 2300, y: 85, scale: 1 },
-        { x: 2700, y: 75, scale: 1.1 },
-        { x: 3100, y: 80, scale: 0.9 },
-        { x: 3500, y: 70, scale: 1.2 },
-        { x: 3900, y: 90, scale: 1 },
-        { x: 4300, y: 65, scale: 1.1 }
-    ];
-
-    clouds.forEach(cloud => {
-        const screenX = (cloud.x - cameraX * 0.3) % (canvas.width + 200);
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(screenX, cloud.y, 25 * cloud.scale, 0, Math.PI * 2);
-        ctx.arc(screenX + 25 * cloud.scale, cloud.y - 10 * cloud.scale, 30 * cloud.scale, 0, Math.PI * 2);
-        ctx.arc(screenX + 55 * cloud.scale, cloud.y, 25 * cloud.scale, 0, Math.PI * 2);
-        ctx.arc(screenX + 25 * cloud.scale, cloud.y + 5 * cloud.scale, 20 * cloud.scale, 0, Math.PI * 2);
-        ctx.fill();
-    });
-
-    if (levelTheme === 'overworld') {
-        const hills = [
-            { x: 50, width: 200, height: 80 },
-            { x: 350, width: 150, height: 60 },
-            { x: 600, width: 250, height: 100 },
-            { x: 1000, width: 180, height: 70 },
-            { x: 1400, width: 220, height: 90 },
-            { x: 1800, width: 160, height: 65 },
-            { x: 2200, width: 200, height: 85 },
-            { x: 2600, width: 180, height: 75 },
-            { x: 3000, width: 220, height: 95 },
-            { x: 3400, width: 170, height: 70 },
-            { x: 3800, width: 200, height: 80 },
-            { x: 4200, width: 190, height: 85 }
-        ];
-
-        hills.forEach(hill => {
-            const screenX = hill.x - cameraX * 0.5;
-            ctx.fillStyle = '#5abd39';
-            ctx.beginPath();
-            ctx.moveTo(screenX, 536);
-            ctx.quadraticCurveTo(screenX + hill.width / 2, 536 - hill.height, screenX + hill.width, 536);
-            ctx.fill();
-            ctx.fillStyle = '#7dd35b';
-            ctx.beginPath();
-            ctx.arc(screenX + hill.width * 0.3, 520 - hill.height * 0.3, 8, 0, Math.PI * 2);
-            ctx.arc(screenX + hill.width * 0.6, 510 - hill.height * 0.5, 6, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        const bushes = [
-            { x: 150, scale: 1 },
-            { x: 500, scale: 0.7 },
-            { x: 850, scale: 1.2 },
-            { x: 1250, scale: 0.9 },
-            { x: 1650, scale: 1.1 },
-            { x: 2050, scale: 0.8 },
-            { x: 2450, scale: 1 },
-            { x: 2850, scale: 0.9 },
-            { x: 3250, scale: 1.1 },
-            { x: 3650, scale: 0.8 },
-            { x: 4050, scale: 1 }
-        ];
-
-        bushes.forEach(bush => {
-            const screenX = bush.x - cameraX;
-            if (screenX > -100 && screenX < canvas.width + 100) {
-                ctx.fillStyle = '#228B22';
-                ctx.beginPath();
-                ctx.arc(screenX, 536, 20 * bush.scale, Math.PI, 0);
-                ctx.arc(screenX + 25 * bush.scale, 536, 25 * bush.scale, Math.PI, 0);
-                ctx.arc(screenX + 55 * bush.scale, 536, 20 * bush.scale, Math.PI, 0);
-                ctx.fill();
-            }
-        });
-    }
-}
-
-// Collision detection
-function rectCollision(rect1, rect2) {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
-}
-
-// Update player
-function updatePlayer() {
-    if (keys.left) {
-        player.velX = -player.speed;
-        player.facingRight = false;
-    } else if (keys.right) {
-        player.velX = player.speed;
-        player.facingRight = true;
-    } else {
-        player.velX *= FRICTION;
-    }
-
-    if (keys.up && player.onGround) {
-        player.velY = -player.jumpStrength;
-        player.onGround = false;
-        player.isJumping = true;
-    }
-
-    player.velY += GRAVITY;
-
-    if (keys.left || keys.right) {
-        player.animTimer++;
-        if (player.animTimer > 5) {
-            player.animFrame++;
-            player.animTimer = 0;
-        }
-    } else {
-        player.animFrame = 0;
-    }
-
-    if (player.invincible) {
-        player.invincibleTimer++;
-        if (player.invincibleTimer > 120) {
-            player.invincible = false;
-            player.invincibleTimer = 0;
-        }
-    }
-
-    player.x += player.velX;
-    player.onGround = false;
-
-    [...platforms, ...bricks.filter(b => b.solid), ...pipes].forEach(obj => {
-        if (rectCollision(player, obj)) {
-            if (player.velX > 0 && player.x + player.width > obj.x && player.x < obj.x) {
-                player.x = obj.x - player.width;
-                player.velX = 0;
-            } else if (player.velX < 0 && player.x < obj.x + obj.width && player.x + player.width > obj.x + obj.width) {
-                player.x = obj.x + obj.width;
-                player.velX = 0;
-            }
-        }
-    });
-
-    player.y += player.velY;
-
-    [...platforms, ...bricks, ...pipes].forEach(obj => {
-        if (rectCollision(player, obj)) {
-            if (player.velY > 0) {
-                player.y = obj.y - player.height;
-                player.velY = 0;
-                player.onGround = true;
-                player.isJumping = false;
-            } else if (player.velY < 0) {
-                player.y = obj.y + obj.height;
-                player.velY = 0;
-            }
-        }
-    });
-
-    questionBlocks.forEach(block => {
-        if (rectCollision(player, block) && player.velY < 0 && !block.hit) {
-            player.y = block.y + block.height;
-            player.velY = 0;
-            block.hit = true;
-            if (block.content === 'coin' || block.content === 'multi') {
-                coins++;
-                score += 200;
-                updateUI();
-            }
-        }
-    });
-
-    bricks.forEach(brick => {
-        if (rectCollision(player, brick) && player.velY < 0 && !brick.solid) {
-            player.y = brick.y + brick.height;
-            player.velY = 0;
-        }
-    });
-
-    coins_array.forEach(coin => {
-        if (!coin.collected && rectCollision(player, coin)) {
-            coin.collected = true;
-            coins++;
-            score += 100;
-            updateUI();
-        }
-    });
-
-    enemies.forEach(enemy => {
-        if (enemy.alive && rectCollision(player, enemy)) {
-            if (player.velY > 0 && player.y + player.height - 10 < enemy.y + enemy.height / 2) {
-                enemy.alive = false;
-                player.velY = -8;
-                score += 100;
-                updateUI();
-            } else if (!player.invincible) {
-                lives--;
-                updateUI();
-                if (lives <= 0) {
-                    gameOver();
-                } else {
-                    player.invincible = true;
-                    player.invincibleTimer = 0;
-                }
-            }
-        }
-    });
-
-    if (flagPole && rectCollision(player, { x: flagPole.x - 20, y: flagPole.y, width: 48, height: flagPole.height })) {
-        levelComplete();
-    }
-
-    if (player.x < 0) player.x = 0;
-    if (player.x > levelWidth - player.width) player.x = levelWidth - player.width;
-
-    if (player.y > canvas.height) {
-        lives--;
-        updateUI();
-        if (lives <= 0) {
-            gameOver();
-        } else {
-            resetPlayer();
-        }
-    }
-
-    const targetCameraX = player.x - CAMERA_OFFSET;
-    cameraX = Math.max(0, Math.min(targetCameraX, levelWidth - canvas.width));
-}
-
-// Update enemies
-function updateEnemies() {
-    enemies.forEach(enemy => {
-        if (enemy.alive) {
-            enemy.x += enemy.velX;
-            [...pipes, ...bricks.filter(b => b.solid)].forEach(obj => {
-                if (rectCollision(enemy, obj)) {
-                    enemy.velX *= -1;
-                    enemy.x += enemy.velX * 2;
-                }
-            });
-            if (enemy.x < 100 || enemy.x > levelWidth - 100) {
-                enemy.velX *= -1;
-            }
-        }
-    });
-}
-
-// Reset player position
-function resetPlayer() {
-    player.x = 100;
-    player.y = 400;
-    player.velX = 0;
-    player.velY = 0;
-    player.invincible = true;
-    player.invincibleTimer = 0;
-    cameraX = 0;
-}
-
-// Update UI
-function updateUI() {
-    document.getElementById('level').textContent = levelConfigs[currentLevel].name;
-    document.getElementById('score').textContent = score;
-    document.getElementById('coins').textContent = coins;
-    document.getElementById('lives').textContent = lives;
-    document.getElementById('time').textContent = time;
-}
-
-// Game over
-function gameOver() {
-    gameState = 'gameover';
-    clearInterval(timerInterval);
-    document.getElementById('final-score').textContent = score;
-    document.getElementById('game-over-screen').classList.remove('hidden');
-}
-
-// Level complete
-function levelComplete() {
-    gameState = 'levelcomplete';
-    clearInterval(timerInterval);
-    score += time * 10;
-    document.getElementById('completed-level').textContent = levelConfigs[currentLevel].name;
-    document.getElementById('level-score').textContent = score;
-    document.getElementById('level-complete-screen').classList.remove('hidden');
-}
-
-// Win game (all levels complete)
-function winGame() {
-    gameState = 'win';
-    clearInterval(timerInterval);
-    document.getElementById('win-score').textContent = score;
-    document.getElementById('win-screen').classList.remove('hidden');
-}
-
-// Next level
-function nextLevel() {
-    currentLevel++;
-    if (currentLevel > TOTAL_LEVELS) {
-        winGame();
-        return;
-    }
-
-    document.getElementById('level-complete-screen').classList.add('hidden');
-    time = levelConfigs[currentLevel].time;
-    initLevel();
-    resetPlayer();
-    updateUI();
-    gameState = 'playing';
-
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        if (gameState === 'playing') {
-            time--;
-            updateUI();
-            if (time <= 0) {
-                lives = 0;
-                gameOver();
-            }
-        }
-    }, 1000);
-}
-
-// Start game
-function startGame() {
-    gameState = 'playing';
-    score = 0;
-    coins = 0;
-    lives = 3;
-    currentLevel = 1;
-    time = levelConfigs[currentLevel].time;
-    cameraX = 0;
-
-    initLevel();
-    resetPlayer();
-    updateUI();
-
-    document.getElementById('start-screen').classList.add('hidden');
-    document.getElementById('game-over-screen').classList.add('hidden');
-    document.getElementById('level-complete-screen').classList.add('hidden');
-    document.getElementById('win-screen').classList.add('hidden');
-
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        if (gameState === 'playing') {
-            time--;
-            updateUI();
-            if (time <= 0) {
-                lives = 0;
-                gameOver();
-            }
-        }
-    }, 1000);
-}
-
-// Main game loop
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = getSkyColor();
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    if (gameState === 'playing') {
-        updatePlayer();
-        updateEnemies();
-    }
-
-    drawBackground();
-    drawPlatforms();
-    drawPipes();
-    drawBricks();
-    drawQuestionBlocks();
-    drawCoins();
-    drawEnemies();
-    drawFlagPole();
-    drawPlayer();
-
-    requestAnimationFrame(gameLoop);
-}
-
-// Event listeners
+// Input event listeners
 document.addEventListener('keydown', (e) => {
-    switch (e.key) {
+    switch(e.code) {
+        case 'KeyW':
+        case 'ArrowUp':
+            keys.forward = true;
+            break;
+        case 'KeyS':
+        case 'ArrowDown':
+            keys.backward = true;
+            break;
+        case 'KeyA':
+            keys.strafeLeft = true;
+            break;
+        case 'KeyD':
+            keys.strafeRight = true;
+            break;
         case 'ArrowLeft':
-        case 'a':
-        case 'A':
             keys.left = true;
             break;
         case 'ArrowRight':
-        case 'd':
-        case 'D':
             keys.right = true;
             break;
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-        case ' ':
-            keys.up = true;
+        case 'Space':
+        case 'KeyF':
+            if (!keys.smash && player.smashCooldown <= 0) {
+                keys.smash = true;
+                player.isSmashing = true;
+                player.smashFrame = 0;
+            }
             e.preventDefault();
             break;
     }
 });
 
 document.addEventListener('keyup', (e) => {
-    switch (e.key) {
+    switch(e.code) {
+        case 'KeyW':
+        case 'ArrowUp':
+            keys.forward = false;
+            break;
+        case 'KeyS':
+        case 'ArrowDown':
+            keys.backward = false;
+            break;
+        case 'KeyA':
+            keys.strafeLeft = false;
+            break;
+        case 'KeyD':
+            keys.strafeRight = false;
+            break;
         case 'ArrowLeft':
-        case 'a':
-        case 'A':
             keys.left = false;
             break;
         case 'ArrowRight':
-        case 'd':
-        case 'D':
             keys.right = false;
             break;
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-        case ' ':
-            keys.up = false;
+        case 'Space':
+        case 'KeyF':
+            keys.smash = false;
             break;
     }
 });
 
-// Button listeners
+// Button event listeners
 document.getElementById('start-btn').addEventListener('click', startGame);
 document.getElementById('restart-btn').addEventListener('click', startGame);
-document.getElementById('next-level-btn').addEventListener('click', nextLevel);
+document.getElementById('next-level-btn').addEventListener('click', nextWave);
 document.getElementById('win-restart-btn').addEventListener('click', startGame);
 
-// Initialize
+function startGame() {
+    gameState = 'playing';
+    player.x = 8 * TILE_SIZE;
+    player.y = 8 * TILE_SIZE;
+    player.angle = 0;
+    player.health = player.maxHealth;
+    player.kills = 0;
+    totalKills = 0;
+    currentWave = 1;
+    bloodSplatters = [];
+
+    spawnWave();
+
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-over-screen').classList.add('hidden');
+    document.getElementById('win-screen').classList.add('hidden');
+    document.getElementById('level-complete-screen').classList.add('hidden');
+}
+
+function nextWave() {
+    currentWave++;
+    player.health = Math.min(player.health + 30, player.maxHealth);
+    spawnWave();
+
+    document.getElementById('level-complete-screen').classList.add('hidden');
+    gameState = 'playing';
+}
+
+function showWaveComplete() {
+    if (currentWave >= 5) {
+        // Win the game!
+        document.getElementById('win-score').textContent = totalKills;
+        document.getElementById('win-screen').classList.remove('hidden');
+        gameState = 'win';
+    } else {
+        document.getElementById('completed-level').textContent = currentWave;
+        document.getElementById('level-score').textContent = totalKills;
+        document.getElementById('level-complete-screen').classList.remove('hidden');
+        gameState = 'levelcomplete';
+    }
+}
+
+function showGameOver() {
+    document.getElementById('final-score').textContent = totalKills;
+    document.getElementById('game-over-screen').classList.remove('hidden');
+    gameState = 'gameover';
+}
+
+// Update player movement
+function updatePlayer() {
+    // Rotation
+    if (keys.left) {
+        player.angle -= player.rotSpeed;
+    }
+    if (keys.right) {
+        player.angle += player.rotSpeed;
+    }
+
+    // Keep angle in bounds
+    while (player.angle < 0) player.angle += Math.PI * 2;
+    while (player.angle >= Math.PI * 2) player.angle -= Math.PI * 2;
+
+    // Movement
+    let moveX = 0;
+    let moveY = 0;
+
+    if (keys.forward) {
+        moveX += Math.cos(player.angle) * player.speed;
+        moveY += Math.sin(player.angle) * player.speed;
+    }
+    if (keys.backward) {
+        moveX -= Math.cos(player.angle) * player.speed;
+        moveY -= Math.sin(player.angle) * player.speed;
+    }
+    if (keys.strafeLeft) {
+        moveX += Math.cos(player.angle - Math.PI/2) * player.speed;
+        moveY += Math.sin(player.angle - Math.PI/2) * player.speed;
+    }
+    if (keys.strafeRight) {
+        moveX += Math.cos(player.angle + Math.PI/2) * player.speed;
+        moveY += Math.sin(player.angle + Math.PI/2) * player.speed;
+    }
+
+    // Check wall collision
+    const newX = player.x + moveX;
+    const newY = player.y + moveY;
+    const padding = 15;
+
+    const mapX1 = Math.floor((newX - padding) / TILE_SIZE);
+    const mapX2 = Math.floor((newX + padding) / TILE_SIZE);
+    const mapY1 = Math.floor((newY - padding) / TILE_SIZE);
+    const mapY2 = Math.floor((newY + padding) / TILE_SIZE);
+
+    // Check X movement
+    if (gameMap[Math.floor(player.y / TILE_SIZE)][mapX1] === 0 &&
+        gameMap[Math.floor(player.y / TILE_SIZE)][mapX2] === 0) {
+        player.x = newX;
+    }
+
+    // Check Y movement
+    if (gameMap[mapY1][Math.floor(player.x / TILE_SIZE)] === 0 &&
+        gameMap[mapY2][Math.floor(player.x / TILE_SIZE)] === 0) {
+        player.y = newY;
+    }
+
+    // View bob when moving
+    if (keys.forward || keys.backward || keys.strafeLeft || keys.strafeRight) {
+        player.bobOffset += player.bobDirection * 0.15;
+        if (Math.abs(player.bobOffset) > 5) {
+            player.bobDirection *= -1;
+        }
+    } else {
+        player.bobOffset *= 0.8;
+    }
+
+    // Smash cooldown
+    if (player.smashCooldown > 0) {
+        player.smashCooldown--;
+    }
+
+    // Smash animation
+    if (player.isSmashing) {
+        player.smashFrame++;
+
+        // At peak of smash, check for hits
+        if (player.smashFrame === 8) {
+            performSmash();
+        }
+
+        if (player.smashFrame >= 20) {
+            player.isSmashing = false;
+            player.smashCooldown = 15;
+        }
+    }
+
+    // Check health
+    if (player.health <= 0) {
+        showGameOver();
+    }
+
+    // Check wave complete
+    if (enemiesRemaining <= 0 && gameState === 'playing') {
+        showWaveComplete();
+    }
+}
+
+// Perform the smash attack
+function performSmash() {
+    screenShake = 20;
+
+    // Check all enemies in range
+    enemies.forEach(enemy => {
+        if (enemy.isDead) return;
+
+        const dist = enemy.getDistanceToPlayer();
+        if (dist < 100) { // Smash range
+            // Check if enemy is roughly in front of player
+            let angleToEnemy = enemy.getAngleToPlayer();
+            let angleDiff = player.angle - angleToEnemy;
+
+            // Normalize angle difference
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+            // Wide arc smash (120 degree cone)
+            if (Math.abs(angleDiff) < Math.PI / 3) {
+                enemy.takeDamage(40);
+            }
+        }
+    });
+}
+
+// Raycasting for walls
+function castRays() {
+    const rays = [];
+    const rayAngleStep = FOV / NUM_RAYS;
+    const startAngle = player.angle - FOV / 2;
+
+    for (let i = 0; i < NUM_RAYS; i++) {
+        const rayAngle = startAngle + i * rayAngleStep;
+
+        let rayX = player.x;
+        let rayY = player.y;
+
+        const rayDirX = Math.cos(rayAngle);
+        const rayDirY = Math.sin(rayAngle);
+
+        let distance = 0;
+        let hitWall = false;
+        let wallType = 0;
+
+        while (!hitWall && distance < MAX_DEPTH) {
+            distance += 1;
+
+            rayX = player.x + rayDirX * distance;
+            rayY = player.y + rayDirY * distance;
+
+            const mapX = Math.floor(rayX / TILE_SIZE);
+            const mapY = Math.floor(rayY / TILE_SIZE);
+
+            if (mapX < 0 || mapX >= MAP_SIZE || mapY < 0 || mapY >= MAP_SIZE) {
+                hitWall = true;
+                wallType = 1;
+            } else if (gameMap[mapY][mapX] !== 0) {
+                hitWall = true;
+                wallType = gameMap[mapY][mapX];
+            }
+        }
+
+        // Fix fisheye effect
+        const correctedDist = distance * Math.cos(rayAngle - player.angle);
+
+        rays.push({
+            distance: correctedDist,
+            angle: rayAngle,
+            wallType: wallType
+        });
+    }
+
+    return rays;
+}
+
+// Draw the 3D view
+function draw3DView() {
+    const rays = castRays();
+    const rayWidth = SCREEN_WIDTH / NUM_RAYS;
+
+    // Draw ceiling
+    const ceilingGradient = ctx.createLinearGradient(0, 0, 0, SCREEN_HEIGHT / 2);
+    ceilingGradient.addColorStop(0, '#1a0a0a');
+    ceilingGradient.addColorStop(1, '#3d1a1a');
+    ctx.fillStyle = ceilingGradient;
+    ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+
+    // Draw floor
+    const floorGradient = ctx.createLinearGradient(0, SCREEN_HEIGHT / 2, 0, SCREEN_HEIGHT);
+    floorGradient.addColorStop(0, '#2d2d2d');
+    floorGradient.addColorStop(1, '#1a1a1a');
+    ctx.fillStyle = floorGradient;
+    ctx.fillRect(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+
+    // Draw walls
+    for (let i = 0; i < rays.length; i++) {
+        const ray = rays[i];
+        const wallHeight = WALL_HEIGHT_FACTOR / ray.distance;
+        const wallTop = (SCREEN_HEIGHT - wallHeight) / 2 + player.bobOffset;
+
+        // Wall color with distance shading
+        const brightness = Math.max(0.2, 1 - ray.distance / MAX_DEPTH);
+        const r = Math.floor(139 * brightness);
+        const g = Math.floor(69 * brightness);
+        const b = Math.floor(69 * brightness);
+
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(
+            i * rayWidth,
+            wallTop + (screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0),
+            rayWidth + 1,
+            wallHeight
+        );
+
+        // Add vertical line detail
+        if (i % 4 === 0) {
+            ctx.fillStyle = `rgba(0, 0, 0, 0.3)`;
+            ctx.fillRect(i * rayWidth, wallTop, 1, wallHeight);
+        }
+    }
+}
+
+// Draw enemies as sprites
+function drawEnemies() {
+    // Sort enemies by distance (far to near)
+    const sortedEnemies = [...enemies].sort((a, b) =>
+        b.getDistanceToPlayer() - a.getDistanceToPlayer()
+    );
+
+    sortedEnemies.forEach(enemy => {
+        if (enemy.isDead && enemy.deathTimer > 30) return; // Fade out dead enemies
+
+        const dist = enemy.getDistanceToPlayer();
+        if (dist > MAX_DEPTH) return;
+
+        // Calculate screen position
+        let angleToEnemy = Math.atan2(
+            enemy.y - player.y,
+            enemy.x - player.x
+        );
+
+        let angleDiff = angleToEnemy - player.angle;
+
+        // Normalize angle
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+        // Check if in view
+        if (Math.abs(angleDiff) > FOV / 2 + 0.2) return;
+
+        // Screen X position
+        const screenX = (SCREEN_WIDTH / 2) + (angleDiff / (FOV / 2)) * (SCREEN_WIDTH / 2);
+
+        // Sprite size based on distance
+        const spriteHeight = WALL_HEIGHT_FACTOR / dist * 0.8;
+        const spriteWidth = spriteHeight * 0.8;
+
+        const spriteY = (SCREEN_HEIGHT - spriteHeight) / 2 + player.bobOffset +
+            (screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0);
+
+        // Draw enemy
+        if (enemy.isDead) {
+            // Dead enemy - collapsed
+            ctx.globalAlpha = Math.max(0, 1 - enemy.deathTimer / 30);
+            drawDeadEnemy(screenX, spriteY + spriteHeight * 0.6, spriteWidth, spriteHeight * 0.3, enemy.type);
+            ctx.globalAlpha = 1;
+        } else {
+            drawEnemy(screenX, spriteY, spriteWidth, spriteHeight, enemy);
+        }
+    });
+}
+
+function drawEnemy(x, y, width, height, enemy) {
+    const centerX = x;
+    const centerY = y + height / 2;
+
+    // Flash white when hit
+    if (enemy.isHit) {
+        ctx.fillStyle = '#ffffff';
+    } else {
+        // Color based on type
+        switch (enemy.type) {
+            case 'imp':
+                ctx.fillStyle = '#8B4513';
+                break;
+            case 'demon':
+                ctx.fillStyle = '#cc2222';
+                break;
+            case 'ogre':
+                ctx.fillStyle = '#4a4a22';
+                break;
+        }
+    }
+
+    // Body
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, width / 2, height / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Face details
+    if (!enemy.isHit) {
+        // Eyes
+        ctx.fillStyle = enemy.type === 'demon' ? '#ffff00' : '#ff0000';
+        const eyeSize = width / 8;
+        const eyeY = centerY - height / 6;
+        ctx.beginPath();
+        ctx.arc(centerX - width / 5, eyeY, eyeSize, 0, Math.PI * 2);
+        ctx.arc(centerX + width / 5, eyeY, eyeSize, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Mouth
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        const mouthY = centerY + height / 6;
+        ctx.ellipse(centerX, mouthY, width / 4, height / 8, 0, 0, Math.PI);
+        ctx.fill();
+
+        // Teeth
+        ctx.fillStyle = '#fff';
+        for (let i = -2; i <= 2; i++) {
+            ctx.fillRect(
+                centerX + i * (width / 12) - 2,
+                mouthY - height / 16,
+                4,
+                height / 12
+            );
+        }
+
+        // Horns for demons
+        if (enemy.type === 'demon' || enemy.type === 'ogre') {
+            ctx.fillStyle = enemy.type === 'demon' ? '#880000' : '#333';
+            ctx.beginPath();
+            ctx.moveTo(centerX - width / 3, y + height / 8);
+            ctx.lineTo(centerX - width / 4, y - height / 6);
+            ctx.lineTo(centerX - width / 6, y + height / 8);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(centerX + width / 3, y + height / 8);
+            ctx.lineTo(centerX + width / 4, y - height / 6);
+            ctx.lineTo(centerX + width / 6, y + height / 8);
+            ctx.fill();
+        }
+    }
+
+    // Animation - bobbing
+    if (enemy.animFrame === 1) {
+        ctx.fillStyle = enemy.isHit ? '#fff' : '#000';
+        ctx.beginPath();
+        ctx.ellipse(centerX, y + height + 5, width / 3, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function drawDeadEnemy(x, y, width, height, type) {
+    ctx.fillStyle = type === 'demon' ? '#661111' : type === 'ogre' ? '#333311' : '#5a3010';
+    ctx.beginPath();
+    ctx.ellipse(x, y, width / 2, height / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // X eyes
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 2;
+    const eyeSize = width / 10;
+
+    ctx.beginPath();
+    ctx.moveTo(x - width / 4 - eyeSize, y - eyeSize);
+    ctx.lineTo(x - width / 4 + eyeSize, y + eyeSize);
+    ctx.moveTo(x - width / 4 + eyeSize, y - eyeSize);
+    ctx.lineTo(x - width / 4 - eyeSize, y + eyeSize);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x + width / 4 - eyeSize, y - eyeSize);
+    ctx.lineTo(x + width / 4 + eyeSize, y + eyeSize);
+    ctx.moveTo(x + width / 4 + eyeSize, y - eyeSize);
+    ctx.lineTo(x + width / 4 - eyeSize, y + eyeSize);
+    ctx.stroke();
+}
+
+// Draw the player's fists
+function drawFists() {
+    const baseY = SCREEN_HEIGHT - 150;
+    const bobY = player.bobOffset * 3;
+
+    // Smash animation
+    let leftX = 100;
+    let rightX = SCREEN_WIDTH - 100;
+    let fistY = baseY + bobY;
+    let fistScale = 1;
+
+    if (player.isSmashing) {
+        const progress = player.smashFrame / 20;
+
+        if (player.smashFrame < 8) {
+            // Wind up
+            const windUp = player.smashFrame / 8;
+            leftX -= windUp * 50;
+            rightX += windUp * 50;
+            fistY += windUp * 100;
+            fistScale = 1 + windUp * 0.3;
+        } else if (player.smashFrame < 12) {
+            // Smash forward!
+            const smashProgress = (player.smashFrame - 8) / 4;
+            leftX += smashProgress * 200;
+            rightX -= smashProgress * 200;
+            fistY -= smashProgress * 150;
+            fistScale = 1.5 - smashProgress * 0.3;
+        } else {
+            // Recovery
+            const recovery = (player.smashFrame - 12) / 8;
+            leftX = 100 + 200 * (1 - recovery);
+            rightX = SCREEN_WIDTH - 100 - 200 * (1 - recovery);
+            fistY = baseY - 150 * (1 - recovery);
+            fistScale = 1.2 - recovery * 0.2;
+        }
+    }
+
+    // Draw both fists
+    drawFist(leftX, fistY, fistScale, true);
+    drawFist(rightX, fistY, fistScale, false);
+}
+
+function drawFist(x, y, scale, isLeft) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale * (isLeft ? 1 : -1), scale);
+
+    // Arm
+    ctx.fillStyle = '#228B22'; // Dinosaur green
+    ctx.beginPath();
+    ctx.ellipse(0, 80, 35, 60, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wrist
+    ctx.beginPath();
+    ctx.ellipse(0, 30, 40, 30, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Fist
+    ctx.fillStyle = '#2E8B2E';
+    ctx.beginPath();
+    ctx.ellipse(0, -10, 50, 45, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Knuckle highlights
+    ctx.fillStyle = '#3CB371';
+    for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.arc(i * 20, -25, 12, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Claws
+    ctx.fillStyle = '#F5F5DC';
+    for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 22 - 8, -45);
+        ctx.lineTo(i * 22, -75);
+        ctx.lineTo(i * 22 + 8, -45);
+        ctx.fill();
+    }
+
+    // Scales detail
+    ctx.fillStyle = '#1E6B1E';
+    for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.arc(
+            Math.cos(i * 1.2) * 25,
+            Math.sin(i * 1.2) * 20 + 10,
+            8,
+            0, Math.PI * 2
+        );
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+// Draw blood splatters
+function drawBloodSplatters() {
+    bloodSplatters.forEach((splat, index) => {
+        ctx.fillStyle = `rgba(139, 0, 0, ${splat.alpha})`;
+        ctx.beginPath();
+        ctx.arc(splat.x, splat.y, splat.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Fade out
+        splat.alpha -= 0.02;
+    });
+
+    // Remove faded splatters
+    bloodSplatters = bloodSplatters.filter(s => s.alpha > 0);
+}
+
+// Draw HUD
+function drawHUD() {
+    // Health bar background
+    ctx.fillStyle = '#333';
+    ctx.fillRect(20, SCREEN_HEIGHT - 50, 200, 30);
+
+    // Health bar
+    const healthPercent = player.health / player.maxHealth;
+    const healthColor = healthPercent > 0.5 ? '#22aa22' : healthPercent > 0.25 ? '#aaaa22' : '#aa2222';
+    ctx.fillStyle = healthColor;
+    ctx.fillRect(22, SCREEN_HEIGHT - 48, 196 * healthPercent, 26);
+
+    // Health bar border
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(20, SCREEN_HEIGHT - 50, 200, 30);
+
+    // Health text
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${Math.max(0, Math.floor(player.health))} HP`, 120, SCREEN_HEIGHT - 30);
+
+    // Smash indicator
+    if (player.smashCooldown > 0) {
+        ctx.fillStyle = '#666';
+    } else {
+        ctx.fillStyle = '#44ff44';
+    }
+    ctx.fillRect(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 50, 80, 30);
+    ctx.strokeRect(SCREEN_WIDTH - 100, SCREEN_HEIGHT - 50, 80, 30);
+    ctx.fillStyle = player.smashCooldown > 0 ? '#aaa' : '#fff';
+    ctx.fillText('SMASH!', SCREEN_WIDTH - 60, SCREEN_HEIGHT - 30);
+
+    // Crosshair
+    ctx.strokeStyle = '#ff0';
+    ctx.lineWidth = 2;
+    const cx = SCREEN_WIDTH / 2;
+    const cy = SCREEN_HEIGHT / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 15, cy);
+    ctx.lineTo(cx - 5, cy);
+    ctx.moveTo(cx + 5, cy);
+    ctx.lineTo(cx + 15, cy);
+    ctx.moveTo(cx, cy - 15);
+    ctx.lineTo(cx, cy - 5);
+    ctx.moveTo(cx, cy + 5);
+    ctx.lineTo(cx, cy + 15);
+    ctx.stroke();
+
+    // Smashing effect
+    if (player.isSmashing && player.smashFrame >= 8 && player.smashFrame < 12) {
+        ctx.fillStyle = `rgba(255, 255, 0, ${0.3 - (player.smashFrame - 8) * 0.075})`;
+        ctx.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+        // SMASH text
+        ctx.fillStyle = '#ff4444';
+        ctx.font = 'bold 72px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('SMASH!', SCREEN_WIDTH / 2 + Math.random() * 10, SCREEN_HEIGHT / 2 + Math.random() * 10);
+    }
+}
+
+// Update UI overlay
+function updateUI() {
+    document.getElementById('level').textContent = `WAVE ${currentWave}`;
+    document.getElementById('score').textContent = totalKills;
+    document.getElementById('coins').textContent = enemiesRemaining;
+    document.getElementById('lives').textContent = Math.floor(player.health);
+    document.getElementById('time').textContent = '';
+}
+
+// Main game loop
+function gameLoop() {
+    // Update screen shake
+    if (screenShake > 0) {
+        screenShake -= 1;
+    }
+
+    if (gameState === 'playing') {
+        updatePlayer();
+
+        // Update enemies
+        enemies.forEach(enemy => enemy.update());
+    }
+
+    // Apply screen shake
+    ctx.save();
+    if (screenShake > 0) {
+        ctx.translate(
+            (Math.random() - 0.5) * screenShake,
+            (Math.random() - 0.5) * screenShake
+        );
+    }
+
+    // Draw everything
+    draw3DView();
+    drawEnemies();
+    drawBloodSplatters();
+    drawFists();
+
+    ctx.restore();
+
+    drawHUD();
+
+    if (gameState === 'playing') {
+        updateUI();
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+// Start the game loop
 gameLoop();
