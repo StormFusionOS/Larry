@@ -158,7 +158,7 @@ class Enemy {
         // Haru Urara variants
         this.health = type === 'urara_strong' ? 50 : type === 'urara_fast' ? 20 : 30;
         this.maxHealth = this.health;
-        this.speed = type === 'urara_fast' ? 4 : type === 'urara_strong' ? 1.8 : 2.5;
+        this.speed = type === 'urara_fast' ? 3 : type === 'urara_strong' ? 1.2 : 1.8; // Slower than player (5)
         this.damage = type === 'urara_strong' ? 18 : type === 'urara_fast' ? 8 : 12;
         this.onGround = false;
         this.facing = -1;
@@ -2637,9 +2637,9 @@ function drawBoss(boss) {
 }
 
 function drawHUD() {
-    // Health bar
+    // Health bar with player name
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(15, 15, 210, 35);
+    ctx.fillRect(15, 15, 210, 55);
 
     const healthPercent = player.health / player.maxHealth;
     const healthGrad = ctx.createLinearGradient(20, 20, 200, 20);
@@ -2664,6 +2664,11 @@ function drawHUD() {
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(`${Math.max(0, Math.floor(player.health))} HP`, 120, 38);
+
+    // Player name "ToFu" under the HP bar
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 14px Impact';
+    ctx.fillText('ToFu', 120, 58);
 
     // Wave and enemies remaining
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
