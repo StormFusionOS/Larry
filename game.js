@@ -58,82 +58,81 @@ const keys = {
 let platforms = [];
 let levelWidth = 3000;
 
-// Generate level - challenging but fair platforming
+// Enemy spawn points - defined with level layout
+let enemySpawnPoints = [];
+
+// Generate level - challenging platforming with enemies spread throughout
 function generateLevel() {
     platforms = [];
+    enemySpawnPoints = [];
 
-    // Solid starting area
-    for (let x = 0; x < 600; x += 200) {
-        platforms.push({
-            x: x,
-            y: 520,
-            width: 200,
-            height: 80,
-            type: 'ground'
-        });
-    }
+    // === SECTION 1: Starting safe zone (no enemies here) ===
+    platforms.push({ x: 0, y: 520, width: 300, height: 80, type: 'ground' });
 
-    // Section 1: Ground with jumpable gaps (gap = 150, easy jump)
-    let groundX = 600;
-    const groundPattern = [200, -150, 250, -150, 200, -180, 300, -150, 200];
-    for (const segment of groundPattern) {
-        if (segment > 0) {
-            platforms.push({ x: groundX, y: 520, width: segment, height: 80, type: 'ground' });
-            groundX += segment;
-        } else {
-            groundX += Math.abs(segment); // gap
+    // === SECTION 2: First platforming challenge - going UP ===
+    // Stepping stones going up and right
+    platforms.push({ x: 350, y: 480, width: 120, height: 20, type: 'platform' });
+    platforms.push({ x: 520, y: 420, width: 140, height: 20, type: 'platform', hasEnemy: true });
+    platforms.push({ x: 380, y: 350, width: 100, height: 20, type: 'platform' });
+    platforms.push({ x: 550, y: 290, width: 150, height: 20, type: 'platform', hasEnemy: true });
+    platforms.push({ x: 400, y: 220, width: 120, height: 20, type: 'platform' });
+
+    // Upper route with enemy
+    platforms.push({ x: 580, y: 160, width: 180, height: 20, type: 'floating', hasEnemy: true });
+
+    // === SECTION 3: Descent and ground section ===
+    platforms.push({ x: 750, y: 250, width: 100, height: 20, type: 'platform' });
+    platforms.push({ x: 900, y: 320, width: 120, height: 20, type: 'platform', hasEnemy: true });
+    platforms.push({ x: 1050, y: 400, width: 100, height: 20, type: 'platform' });
+
+    // Ground island with enemies
+    platforms.push({ x: 1000, y: 520, width: 250, height: 80, type: 'ground', hasEnemy: true });
+
+    // === SECTION 4: Vertical tower section ===
+    // Base platform
+    platforms.push({ x: 1300, y: 520, width: 150, height: 80, type: 'ground' });
+
+    // Tower going up (alternating sides)
+    platforms.push({ x: 1350, y: 440, width: 100, height: 20, type: 'platform', hasEnemy: true });
+    platforms.push({ x: 1250, y: 360, width: 100, height: 20, type: 'platform' });
+    platforms.push({ x: 1380, y: 280, width: 120, height: 20, type: 'platform', hasEnemy: true });
+    platforms.push({ x: 1250, y: 200, width: 110, height: 20, type: 'platform' });
+    platforms.push({ x: 1350, y: 130, width: 140, height: 20, type: 'floating', hasEnemy: true });
+
+    // === SECTION 5: High bridge section ===
+    platforms.push({ x: 1530, y: 150, width: 100, height: 20, type: 'floating' });
+    platforms.push({ x: 1680, y: 180, width: 150, height: 20, type: 'floating', hasEnemy: true });
+    platforms.push({ x: 1880, y: 150, width: 120, height: 20, type: 'floating' });
+    platforms.push({ x: 2050, y: 180, width: 140, height: 20, type: 'floating', hasEnemy: true });
+
+    // === SECTION 6: Descent to mid-level ===
+    platforms.push({ x: 2200, y: 260, width: 100, height: 20, type: 'platform' });
+    platforms.push({ x: 2100, y: 340, width: 120, height: 20, type: 'platform', hasEnemy: true });
+    platforms.push({ x: 2250, y: 420, width: 100, height: 20, type: 'platform' });
+
+    // Mid-level ground
+    platforms.push({ x: 2150, y: 520, width: 200, height: 80, type: 'ground', hasEnemy: true });
+
+    // === SECTION 7: Final gauntlet ===
+    // Series of challenging jumps
+    platforms.push({ x: 2400, y: 480, width: 80, height: 20, type: 'platform' });
+    platforms.push({ x: 2530, y: 420, width: 100, height: 20, type: 'platform', hasEnemy: true });
+    platforms.push({ x: 2680, y: 350, width: 90, height: 20, type: 'platform' });
+    platforms.push({ x: 2820, y: 280, width: 120, height: 20, type: 'platform', hasEnemy: true });
+
+    // Final arena (for boss fight or last enemies)
+    platforms.push({ x: 2750, y: 520, width: 250, height: 80, type: 'ground' });
+
+    // Collect spawn points from platforms marked with enemies
+    for (const plat of platforms) {
+        if (plat.hasEnemy) {
+            enemySpawnPoints.push({
+                x: plat.x + plat.width / 2 - 20,
+                y: plat.y - 65,
+                platX: plat.x,
+                platWidth: plat.width
+            });
         }
-    }
-
-    // Section 2: Stepping stone platforms (always reachable)
-    const steppingStones = [
-        { x: 750, y: 420, w: 100 },
-        { x: 900, y: 350, w: 120 },
-        { x: 1100, y: 380, w: 100 },
-        { x: 1300, y: 320, w: 110 },
-        { x: 1500, y: 360, w: 100 },
-        { x: 1700, y: 300, w: 120 },
-        { x: 1900, y: 340, w: 100 },
-    ];
-    for (const stone of steppingStones) {
-        platforms.push({ x: stone.x, y: stone.y, width: stone.w, height: 20, type: 'platform' });
-    }
-
-    // Continue ground after gap section
-    for (let x = groundX; x < levelWidth - 200; x += 200) {
-        // Occasional gaps that are always jumpable
-        if (x % 600 === 0 && x > groundX) {
-            x += 120; // Small gap
-        }
-        platforms.push({ x: x, y: 520, width: 200, height: 80, type: 'ground' });
-    }
-
-    // Section 3: High platforms for skilled players (bonus route)
-    const highPlatforms = [
-        { x: 400, y: 250, w: 150 },
-        { x: 620, y: 180, w: 120 },
-        { x: 850, y: 150, w: 130 },
-        { x: 1100, y: 180, w: 120 },
-        { x: 1350, y: 140, w: 140 },
-        { x: 1600, y: 170, w: 120 },
-        { x: 1850, y: 130, w: 130 },
-        { x: 2100, y: 160, w: 120 },
-        { x: 2350, y: 140, w: 150 },
-    ];
-    for (const plat of highPlatforms) {
-        platforms.push({ x: plat.x, y: plat.y, width: plat.w, height: 20, type: 'floating' });
-    }
-
-    // Mid-level connector platforms
-    const connectors = [
-        { x: 500, y: 350, w: 80 },
-        { x: 1000, y: 280, w: 90 },
-        { x: 1450, y: 250, w: 85 },
-        { x: 2000, y: 270, w: 90 },
-        { x: 2500, y: 280, w: 85 },
-    ];
-    for (const conn of connectors) {
-        platforms.push({ x: conn.x, y: conn.y, width: conn.w, height: 20, type: 'platform' });
     }
 }
 
@@ -148,7 +147,7 @@ let steaks = []; // Health pickup steaks dropped by boss
 
 // Enemy class - Haru Urara style horse girls
 class Enemy {
-    constructor(x, y, type = 'urara') {
+    constructor(x, y, type = 'urara', patrolLeft = null, patrolRight = null) {
         this.x = x;
         this.y = y;
         this.width = 40;
@@ -170,6 +169,14 @@ class Enemy {
         this.animFrame = 0;
         this.animTimer = 0;
         this.jumpCooldown = 0;
+
+        // Patrol behavior
+        this.patrolLeft = patrolLeft;
+        this.patrolRight = patrolRight;
+        this.patrolDir = 1; // 1 = right, -1 = left
+        this.isChasing = false;
+        this.detectionRange = type === 'urara_fast' ? 300 : type === 'urara_strong' ? 200 : 250;
+        this.chaseRange = 400; // Stop chasing if player gets too far
     }
 
     update() {
@@ -196,22 +203,56 @@ class Enemy {
         // Gravity
         this.velY += GRAVITY;
 
-        // Move towards player
+        // Calculate distance to player
         const dx = player.x - this.x;
-        this.facing = dx > 0 ? 1 : -1;
+        const dy = player.y - this.y;
+        const distToPlayer = Math.sqrt(dx * dx + dy * dy);
 
-        if (Math.abs(dx) > 30) {
-            this.velX = this.facing * this.speed;
+        // Determine if should chase or patrol
+        if (distToPlayer < this.detectionRange) {
+            this.isChasing = true;
+        } else if (distToPlayer > this.chaseRange) {
+            this.isChasing = false;
+        }
+
+        if (this.isChasing) {
+            // Chase mode - move towards player
+            this.facing = dx > 0 ? 1 : -1;
+
+            if (Math.abs(dx) > 30) {
+                this.velX = this.facing * this.speed;
+            } else {
+                this.velX = 0;
+            }
+
+            // Jump if player is above and close
+            if (player.y < this.y - 50 && this.onGround && this.jumpCooldown <= 0 && Math.abs(dx) < 150) {
+                this.velY = JUMP_FORCE * 0.8;
+                this.onGround = false;
+                this.jumpCooldown = 60;
+            }
         } else {
-            this.velX = 0;
+            // Patrol mode - walk back and forth on platform
+            if (this.patrolLeft !== null && this.patrolRight !== null) {
+                // Check patrol boundaries
+                if (this.x <= this.patrolLeft) {
+                    this.patrolDir = 1;
+                } else if (this.x + this.width >= this.patrolRight) {
+                    this.patrolDir = -1;
+                }
+
+                this.velX = this.patrolDir * this.speed * 0.5; // Slower patrol speed
+                this.facing = this.patrolDir;
+            } else {
+                // No patrol bounds, just stand and look around
+                this.velX = 0;
+                // Occasionally change facing direction
+                if (Math.random() < 0.01) {
+                    this.facing *= -1;
+                }
+            }
         }
 
-        // Jump if player is above
-        if (player.y < this.y - 50 && this.onGround && this.jumpCooldown <= 0) {
-            this.velY = JUMP_FORCE * 0.8;
-            this.onGround = false;
-            this.jumpCooldown = 60;
-        }
         if (this.jumpCooldown > 0) this.jumpCooldown--;
 
         // Apply velocity
@@ -269,7 +310,7 @@ class Enemy {
     }
 }
 
-// Boss class - Marioman the Furry
+// Boss class - Marioman the Furry with learnable attack patterns
 class Boss {
     constructor(x, y) {
         this.x = x;
@@ -278,10 +319,10 @@ class Boss {
         this.height = 140;
         this.velX = 0;
         this.velY = 0;
-        this.health = 1200;
-        this.maxHealth = 1200;
-        this.speed = 2.5;
-        this.damage = 25;
+        this.health = 1500; // More health for longer fight
+        this.maxHealth = 1500;
+        this.speed = 2.0; // Slightly slower
+        this.damage = 12; // Reduced from 25
         this.onGround = false;
         this.facing = -1;
         this.isHit = false;
@@ -297,8 +338,38 @@ class Boss {
         this.phase = 1; // Gets angrier as health drops
         this.introTimer = 120; // Intro animation
         this.shakeTimer = 0;
-        this.fireballCooldown = 0; // Fireball attack timer
         this.steakDropTimer = 0; // Timer for dropping health steaks
+
+        // Pattern system - learnable attack sequences
+        this.currentPattern = 0;
+        this.patternStep = 0;
+        this.patternTimer = 0;
+        this.patternCooldown = 0;
+        this.isExecutingPattern = false;
+        this.telegraphTimer = 0; // Warning before attacks
+        this.isTelegraphing = false;
+        this.currentAttackType = null;
+
+        // Attack patterns (each is a sequence of moves)
+        // Pattern types: 'fireball_single', 'fireball_spread', 'fireball_wave',
+        //                'charge', 'jump_slam', 'rest'
+        this.patterns = {
+            1: [ // Phase 1 - Simple patterns
+                ['telegraph', 'fireball_single', 'rest', 'rest'],
+                ['telegraph', 'charge', 'rest', 'rest', 'rest'],
+                ['telegraph', 'fireball_single', 'rest', 'telegraph', 'fireball_single', 'rest'],
+            ],
+            2: [ // Phase 2 - More complex
+                ['telegraph', 'fireball_spread', 'rest', 'telegraph', 'charge', 'rest'],
+                ['telegraph', 'jump_slam', 'rest', 'telegraph', 'fireball_single', 'rest'],
+                ['telegraph', 'fireball_single', 'telegraph', 'fireball_single', 'telegraph', 'fireball_single', 'rest', 'rest'],
+            ],
+            3: [ // Phase 3 - Intense but still learnable
+                ['telegraph', 'fireball_wave', 'rest', 'telegraph', 'charge', 'telegraph', 'jump_slam', 'rest'],
+                ['telegraph', 'jump_slam', 'telegraph', 'fireball_spread', 'rest', 'rest'],
+                ['telegraph', 'charge', 'telegraph', 'fireball_wave', 'rest', 'telegraph', 'charge', 'rest'],
+            ]
+        };
     }
 
     update() {
@@ -319,8 +390,8 @@ class Boss {
             return;
         }
 
-        // Phase based on health (gets more dangerous as health drops)
-        this.phase = this.health > 800 ? 1 : this.health > 400 ? 2 : 3;
+        // Phase based on health
+        this.phase = this.health > 1000 ? 1 : this.health > 500 ? 2 : 3;
 
         // Animation
         this.animTimer++;
@@ -338,86 +409,21 @@ class Boss {
         // Gravity
         this.velY += GRAVITY;
 
-        // Move towards player (faster in later phases)
-        const dx = player.x - this.x;
-        this.facing = dx > 0 ? 1 : -1;
-        const phaseSpeed = this.speed + (this.phase - 1) * 0.8;
+        // Pattern-based attack system
+        this.executePatternSystem();
 
-        if (Math.abs(dx) > 60) {
-            this.velX = this.facing * phaseSpeed;
-        } else {
-            this.velX = 0;
-            // Attack when close
-            if (this.attackCooldown <= 0 && !this.isAttacking) {
-                this.isAttacking = true;
-                this.attackFrame = 0;
-                this.attackCooldown = 60 - this.phase * 10;
-            }
-        }
-
-        // Attack animation
-        if (this.isAttacking) {
-            this.attackFrame++;
-            if (this.attackFrame === 15) {
-                // Deal damage if player is close
-                if (Math.abs(player.x - this.x) < 100 && Math.abs(player.y - this.y) < 80) {
-                    player.health -= this.damage;
-                    screenShake = 15;
-                }
-            }
-            if (this.attackFrame >= 30) {
-                this.isAttacking = false;
-            }
-        }
-
-        if (this.attackCooldown > 0) this.attackCooldown--;
-
-        // Fireball attack - shoots fireballs at player
-        if (this.fireballCooldown <= 0 && !this.isAttacking) {
-            const fireballSpeed = 6 + this.phase;
+        // Basic movement when not executing special attacks
+        if (!this.isExecutingPattern || this.currentAttackType === 'rest') {
             const dx = player.x - this.x;
-            const dy = player.y - this.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            this.facing = dx > 0 ? 1 : -1;
 
-            // Shoot fireball towards player
-            fireballs.push({
-                x: this.x + this.width / 2,
-                y: this.y + 30,
-                velX: (dx / dist) * fireballSpeed,
-                velY: (dy / dist) * fireballSpeed,
-                size: 15 + this.phase * 3,
-                damage: 15 + this.phase * 5,
-                life: 180
-            });
-
-            // Shoot more fireballs in later phases
-            if (this.phase >= 2) {
-                fireballs.push({
-                    x: this.x + this.width / 2,
-                    y: this.y + 30,
-                    velX: (dx / dist) * fireballSpeed + 2,
-                    velY: (dy / dist) * fireballSpeed - 2,
-                    size: 12 + this.phase * 2,
-                    damage: 10 + this.phase * 3,
-                    life: 150
-                });
+            // Move towards player slowly when resting
+            if (Math.abs(dx) > 150) {
+                this.velX = this.facing * this.speed * 0.5;
+            } else {
+                this.velX *= 0.8;
             }
-            if (this.phase >= 3) {
-                fireballs.push({
-                    x: this.x + this.width / 2,
-                    y: this.y + 30,
-                    velX: (dx / dist) * fireballSpeed - 2,
-                    velY: (dy / dist) * fireballSpeed - 2,
-                    size: 12 + this.phase * 2,
-                    damage: 10 + this.phase * 3,
-                    life: 150
-                });
-            }
-
-            this.fireballCooldown = 90 - this.phase * 15; // Faster in later phases
-            screenShake = 4;
         }
-        if (this.fireballCooldown > 0) this.fireballCooldown--;
 
         // Drop ribeye steaks periodically for player health recovery
         this.steakDropTimer++;
@@ -475,6 +481,244 @@ class Boss {
         if (this.x > levelWidth - this.width) this.x = levelWidth - this.width;
     }
 
+    executePatternSystem() {
+        // Start a new pattern if not executing one
+        if (!this.isExecutingPattern && this.patternCooldown <= 0) {
+            const phasePatterns = this.patterns[this.phase];
+            this.currentPattern = Math.floor(Math.random() * phasePatterns.length);
+            this.patternStep = 0;
+            this.isExecutingPattern = true;
+            this.patternTimer = 0;
+        }
+
+        if (this.patternCooldown > 0) {
+            this.patternCooldown--;
+            return;
+        }
+
+        if (!this.isExecutingPattern) return;
+
+        const phasePatterns = this.patterns[this.phase];
+        const pattern = phasePatterns[this.currentPattern];
+
+        if (this.patternStep >= pattern.length) {
+            // Pattern complete, rest before next pattern
+            this.isExecutingPattern = false;
+            this.patternCooldown = 60; // 1 second between patterns
+            this.currentAttackType = null;
+            return;
+        }
+
+        const currentAction = pattern[this.patternStep];
+        this.currentAttackType = currentAction;
+
+        this.patternTimer++;
+
+        switch (currentAction) {
+            case 'telegraph':
+                this.executeTelegraph();
+                break;
+            case 'fireball_single':
+                this.executeFireballSingle();
+                break;
+            case 'fireball_spread':
+                this.executeFireballSpread();
+                break;
+            case 'fireball_wave':
+                this.executeFireballWave();
+                break;
+            case 'charge':
+                this.executeCharge();
+                break;
+            case 'jump_slam':
+                this.executeJumpSlam();
+                break;
+            case 'rest':
+                this.executeRest();
+                break;
+        }
+    }
+
+    executeTelegraph() {
+        // Visual warning before attack - lasts 45 frames (0.75 seconds)
+        this.isTelegraphing = true;
+        if (this.patternTimer >= 45) {
+            this.isTelegraphing = false;
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
+    }
+
+    executeFireballSingle() {
+        // Single aimed fireball
+        if (this.patternTimer === 1) {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = 5;
+
+            fireballs.push({
+                x: this.x + this.width / 2,
+                y: this.y + 30,
+                velX: (dx / dist) * speed,
+                velY: (dy / dist) * speed,
+                size: 18,
+                damage: 8, // Reduced damage
+                life: 180
+            });
+            screenShake = 3;
+        }
+
+        if (this.patternTimer >= 30) {
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
+    }
+
+    executeFireballSpread() {
+        // 3 fireballs in a spread pattern
+        if (this.patternTimer === 1) {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const baseAngle = Math.atan2(dy, dx);
+            const speed = 4.5;
+
+            for (let i = -1; i <= 1; i++) {
+                const angle = baseAngle + i * 0.3; // 0.3 radian spread
+                fireballs.push({
+                    x: this.x + this.width / 2,
+                    y: this.y + 30,
+                    velX: Math.cos(angle) * speed,
+                    velY: Math.sin(angle) * speed,
+                    size: 15,
+                    damage: 6, // Reduced damage
+                    life: 150
+                });
+            }
+            screenShake = 4;
+        }
+
+        if (this.patternTimer >= 40) {
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
+    }
+
+    executeFireballWave() {
+        // Wave of 5 fireballs fired in sequence
+        if (this.patternTimer % 12 === 1 && this.patternTimer < 60) {
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const speed = 4;
+
+            fireballs.push({
+                x: this.x + this.width / 2,
+                y: this.y + 30,
+                velX: (dx / dist) * speed,
+                velY: (dy / dist) * speed,
+                size: 14,
+                damage: 5, // Lower damage per fireball
+                life: 180
+            });
+            screenShake = 2;
+        }
+
+        if (this.patternTimer >= 70) {
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
+    }
+
+    executeCharge() {
+        // Charge attack - dash towards player
+        if (this.patternTimer === 1) {
+            this.facing = player.x > this.x ? 1 : -1;
+            this.velX = this.facing * 8; // Fast charge
+            this.isAttacking = true;
+            this.attackFrame = 0;
+        }
+
+        // Maintain charge speed
+        if (this.patternTimer < 30) {
+            this.velX = this.facing * 8;
+
+            // Damage on contact
+            if (Math.abs(player.x - this.x) < 80 && Math.abs(player.y - this.y) < 80) {
+                if (this.patternTimer > 5 && !this.hitPlayer) {
+                    player.health -= this.damage;
+                    screenShake = 8;
+                    this.hitPlayer = true;
+                }
+            }
+        } else {
+            this.velX *= 0.8; // Slow down
+            this.isAttacking = false;
+        }
+
+        if (this.patternTimer >= 50) {
+            this.patternStep++;
+            this.patternTimer = 0;
+            this.hitPlayer = false;
+        }
+    }
+
+    executeJumpSlam() {
+        // Jump up and slam down
+        if (this.patternTimer === 1) {
+            this.velY = -18; // Big jump
+            this.facing = player.x > this.x ? 1 : -1;
+            this.onGround = false;
+        }
+
+        // Move towards player while in air
+        if (!this.onGround && this.patternTimer < 40) {
+            const dx = player.x - this.x;
+            this.velX = Math.sign(dx) * 3;
+        }
+
+        // Slam damage when landing
+        if (this.onGround && this.patternTimer > 20 && !this.slamDone) {
+            screenShake = 12;
+            this.slamDone = true;
+
+            // Damage in area around landing
+            const slamRange = 120;
+            if (Math.abs(player.x - this.x) < slamRange && Math.abs(player.y - this.y) < 100) {
+                player.health -= this.damage + 5;
+            }
+
+            // Ground slam particles
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: this.x + this.width / 2 + (Math.random() - 0.5) * 100,
+                    y: this.y + this.height,
+                    velX: (Math.random() - 0.5) * 8,
+                    velY: -Math.random() * 6,
+                    size: 5 + Math.random() * 5,
+                    color: '#8B4513',
+                    life: 30
+                });
+            }
+        }
+
+        if (this.patternTimer >= 60) {
+            this.patternStep++;
+            this.patternTimer = 0;
+            this.slamDone = false;
+        }
+    }
+
+    executeRest() {
+        // Recovery period - player's chance to attack
+        this.velX *= 0.9;
+
+        if (this.patternTimer >= 45) { // 0.75 seconds of rest
+            this.patternStep++;
+            this.patternTimer = 0;
+        }
+    }
+
     takeDamage(amount) {
         this.health -= amount;
         this.isHit = true;
@@ -517,7 +761,7 @@ class Boss {
     }
 }
 
-// Spawn wave of enemies
+// Spawn wave of enemies - distributed across platforms
 function spawnWave(wave) {
     enemies = [];
     boss = null;
@@ -526,21 +770,55 @@ function spawnWave(wave) {
     steaks = []; // Clear steaks
 
     if (wave === 6) {
-        // Boss fight!
+        // Boss fight! Boss spawns at the final arena
         isBossFight = true;
-        boss = new Boss(player.x + 400, 200);
+        boss = new Boss(2800, 350);
         return;
     }
 
-    const numEnemies = 4 + wave * 2;
+    // Calculate how many enemies for this wave
+    const baseEnemies = 3 + wave;
+    const numEnemies = Math.min(baseEnemies, enemySpawnPoints.length);
 
+    // Shuffle spawn points to randomize which platforms get enemies
+    const shuffledSpawns = [...enemySpawnPoints].sort(() => Math.random() - 0.5);
+
+    // Spawn enemies on platforms throughout the level
     for (let i = 0; i < numEnemies; i++) {
-        const x = 500 + i * 180 + Math.random() * 80;
-        const y = 200;
-        // All enemies are now Haru Urara variants
+        const spawn = shuffledSpawns[i];
+
+        // Determine enemy type based on wave
         const types = ['urara', 'urara', 'urara_fast', 'urara_strong'];
-        const type = types[Math.floor(Math.random() * Math.min(wave + 1, types.length))];
-        enemies.push(new Enemy(x, y, type));
+        const typeIndex = Math.floor(Math.random() * Math.min(wave + 1, types.length));
+        const type = types[typeIndex];
+
+        // Create enemy with patrol bounds matching their platform
+        const enemy = new Enemy(
+            spawn.x,
+            spawn.y,
+            type,
+            spawn.platX + 5, // Left patrol bound
+            spawn.platX + spawn.platWidth - 5 // Right patrol bound
+        );
+
+        enemies.push(enemy);
+    }
+
+    // In later waves, add extra enemies on random platforms
+    if (wave >= 3) {
+        const extraCount = wave - 2;
+        for (let i = 0; i < extraCount && i < shuffledSpawns.length - numEnemies; i++) {
+            const spawn = shuffledSpawns[numEnemies + i];
+            const type = Math.random() < 0.5 ? 'urara_fast' : 'urara_strong';
+            const enemy = new Enemy(
+                spawn.x,
+                spawn.y,
+                type,
+                spawn.platX + 5,
+                spawn.platX + spawn.platWidth - 5
+            );
+            enemies.push(enemy);
+        }
     }
 }
 
@@ -659,7 +937,7 @@ function update() {
                 if (boss.x + boss.width > smashX &&
                     boss.x < smashX + smashRange &&
                     Math.abs(boss.y - player.y) < 100) {
-                    boss.takeDamage(25); // Less damage to boss
+                    boss.takeDamage(15); // Reduced damage to boss
 
                     // Impact particles
                     for (let i = 0; i < 12; i++) {
@@ -1730,6 +2008,15 @@ function drawBoss(boss) {
         ctx.fill();
     }
 
+    // Telegraph warning glow (pulsing red when about to attack)
+    if (boss.isTelegraphing) {
+        const pulse = 0.4 + Math.sin(Date.now() / 80) * 0.3;
+        ctx.fillStyle = `rgba(255, 50, 50, ${pulse})`;
+        ctx.beginPath();
+        ctx.ellipse(50, 70, 65, 85, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
     // Phase colors (gets angrier as health drops)
     let furColor, furLight, eyeColor;
     switch(boss.phase) {
@@ -1951,6 +2238,42 @@ function drawBoss(boss) {
         ctx.font = '12px Arial';
         ctx.fillText('🔥', nameX - 48, nameY + 5);
         ctx.fillText('🔥', nameX + 42, nameY + 5);
+
+        // Telegraph warning indicator
+        if (boss.isTelegraphing) {
+            const warningY = by - 60 + Math.sin(Date.now() / 100) * 3;
+            const pulse = 0.7 + Math.sin(Date.now() / 100) * 0.3;
+
+            // Warning background
+            ctx.fillStyle = `rgba(255, 0, 0, ${pulse * 0.8})`;
+            ctx.beginPath();
+            ctx.roundRect(nameX - 45, warningY - 12, 90, 24, 5);
+            ctx.fill();
+
+            // Warning border
+            ctx.strokeStyle = '#FFFF00';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Warning text
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('⚠️ ATTACK! ⚠️', nameX, warningY + 5);
+        }
+
+        // Show current attack type for learning
+        if (boss.currentAttackType && boss.currentAttackType !== 'rest' && boss.currentAttackType !== 'telegraph') {
+            const attackY = by + boss.height + 20;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.beginPath();
+            ctx.roundRect(nameX - 50, attackY - 10, 100, 20, 4);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFAA00';
+            ctx.font = 'bold 11px Arial';
+            const attackName = boss.currentAttackType.replace('_', ' ').toUpperCase();
+            ctx.fillText(attackName, nameX, attackY + 4);
+        }
     }
 
     // Boss intro announcement
@@ -2059,9 +2382,9 @@ function drawHUD() {
     ctx.textAlign = 'center';
     ctx.fillText(`${Math.max(0, Math.floor(player.health))} HP`, 120, 38);
 
-    // Wave and kills
+    // Wave and enemies remaining
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    ctx.fillRect(SCREEN_WIDTH - 150, 15, 135, 55);
+    ctx.fillRect(SCREEN_WIDTH - 150, 15, 135, 75);
 
     ctx.fillStyle = isBossFight ? '#FF4444' : '#fff';
     ctx.font = 'bold 16px Arial';
@@ -2071,8 +2394,16 @@ function drawHUD() {
     } else {
         ctx.fillText(`Wave: ${currentWave}/5`, SCREEN_WIDTH - 25, 35);
     }
+
+    // Show enemies remaining (not in boss fight)
+    if (!isBossFight) {
+        const remainingEnemies = enemies.filter(e => !e.isDead).length;
+        ctx.fillStyle = remainingEnemies > 0 ? '#FF8844' : '#44FF44';
+        ctx.fillText(`Enemies: ${remainingEnemies}`, SCREEN_WIDTH - 25, 55);
+    }
+
     ctx.fillStyle = '#fff';
-    ctx.fillText(`Kills: ${totalKills}`, SCREEN_WIDTH - 25, 58);
+    ctx.fillText(`Kills: ${totalKills}`, SCREEN_WIDTH - 25, 75);
 
     // Smash cooldown indicator
     if (player.smashCooldown > 0) {
@@ -2085,6 +2416,66 @@ function drawHUD() {
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'left';
         ctx.fillText('SMASH READY [CTRL]', 20, 70);
+    }
+
+    // Enemy direction indicators (arrows pointing to off-screen enemies)
+    if (!isBossFight) {
+        const aliveEnemies = enemies.filter(e => !e.isDead);
+        for (const enemy of aliveEnemies) {
+            const screenX = enemy.x - camera.x;
+            const screenY = enemy.y - camera.y;
+
+            // Check if enemy is off screen
+            if (screenX < -50 || screenX > SCREEN_WIDTH + 50 ||
+                screenY < -50 || screenY > SCREEN_HEIGHT + 50) {
+
+                // Calculate arrow position at screen edge
+                const playerScreenX = SCREEN_WIDTH / 2;
+                const playerScreenY = player.y - camera.y;
+
+                const dx = screenX - playerScreenX;
+                const dy = screenY - playerScreenY;
+                const angle = Math.atan2(dy, dx);
+
+                // Position arrow at edge of screen
+                let arrowX, arrowY;
+                const margin = 40;
+
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    // Enemy is more to the side
+                    arrowX = dx > 0 ? SCREEN_WIDTH - margin : margin;
+                    arrowY = Math.max(margin, Math.min(SCREEN_HEIGHT - margin, playerScreenY + dy * 0.3));
+                } else {
+                    // Enemy is more above/below
+                    arrowY = dy > 0 ? SCREEN_HEIGHT - margin : margin;
+                    arrowX = Math.max(margin, Math.min(SCREEN_WIDTH - margin, playerScreenX + dx * 0.3));
+                }
+
+                // Draw arrow
+                ctx.save();
+                ctx.translate(arrowX, arrowY);
+                ctx.rotate(angle);
+
+                // Pulsing effect
+                const pulse = 0.8 + Math.sin(Date.now() / 200) * 0.2;
+
+                // Arrow background
+                ctx.fillStyle = 'rgba(255, 100, 50, 0.8)';
+                ctx.beginPath();
+                ctx.moveTo(15 * pulse, 0);
+                ctx.lineTo(-8 * pulse, -8 * pulse);
+                ctx.lineTo(-8 * pulse, 8 * pulse);
+                ctx.closePath();
+                ctx.fill();
+
+                // Arrow border
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
     }
 
     // Controls hint
@@ -2109,8 +2500,12 @@ function drawStartScreen() {
 
     ctx.fillStyle = '#fff';
     ctx.font = '18px Arial';
-    ctx.fillText('Smash the anime horse-girls with your mighty fists!', SCREEN_WIDTH/2, 300);
+    ctx.fillText('Navigate the platforms and smash the horse-girls!', SCREEN_WIDTH/2, 300);
+    ctx.fillStyle = '#FF8844';
+    ctx.font = '14px Arial';
+    ctx.fillText('Arrows point to off-screen enemies', SCREEN_WIDTH/2, 325);
 
+    ctx.fillStyle = '#fff';
     ctx.fillText('A/D or ←/→ : Move', SCREEN_WIDTH/2, 360);
     ctx.fillText('W/↑/SPACE : Jump', SCREEN_WIDTH/2, 390);
     ctx.fillText('CTRL : SMASH ATTACK', SCREEN_WIDTH/2, 420);
