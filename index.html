@@ -3,50 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TOFU SMASH - First Person Melee Combat</title>
+    <title>TOFU SMASH - Side-Scrolling Platformer</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="game-container">
-        <div id="ui-overlay">
-            <div id="score-display">
-                <span id="level">WAVE 1</span>
-                <span>KILLS: <span id="score">0</span></span>
-                <span>ENEMIES: <span id="coins">0</span></span>
-                <span>HP: <span id="lives">100</span></span>
-                <span id="time"></span>
-            </div>
-        </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div id="start-screen">
-            <h1>TOFU SMASH</h1>
-            <p>Crush anime horse-girls with your mighty fists!</p>
-            <div id="controls-info">
-                <p><strong>Controls:</strong></p>
-                <p>W/S or Up/Down - Move Forward/Back</p>
-                <p>A/D - Strafe Left/Right</p>
-                <p>Left/Right Arrows - Turn</p>
-                <p>SPACE or F - SMASH!</p>
-            </div>
-            <button id="start-btn">START SMASHING</button>
-        </div>
-        <div id="game-over-screen" class="hidden">
-            <h1>YOU DIED</h1>
-            <p>Total Kills: <span id="final-score">0</span></p>
-            <button id="restart-btn">SMASH AGAIN</button>
-        </div>
-        <div id="level-complete-screen" class="hidden">
-            <h1>WAVE CLEARED!</h1>
-            <p>Wave <span id="completed-level">1</span> complete!</p>
-            <p>Total Kills: <span id="level-score">0</span></p>
-            <button id="next-level-btn">NEXT WAVE</button>
-        </div>
-        <div id="win-screen" class="hidden">
-            <h1>VICTORY!</h1>
-            <p>You have crushed all waves!</p>
-            <p>Total Kills: <span id="win-score">0</span></p>
-            <button id="win-restart-btn">SMASH AGAIN</button>
-        </div>
     </div>
     <script src="game.js"></script>
 </body>
