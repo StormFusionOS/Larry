@@ -247,7 +247,7 @@ document.addEventListener('keydown', (e) => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
     if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.jump = true;
-    if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.smash = true;
+    if (e.code === 'KeyF' || e.code === 'ControlLeft' || e.code === 'ControlRight') keys.smash = true;
 
     if (e.code === 'Enter' || e.code === 'Space') {
         if (gameState === 'start') {
@@ -262,7 +262,7 @@ document.addEventListener('keyup', (e) => {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
     if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') keys.jump = false;
-    if (e.code === 'KeyF' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.smash = false;
+    if (e.code === 'KeyF' || e.code === 'ControlLeft' || e.code === 'ControlRight') keys.smash = false;
 });
 
 function startGame() {
@@ -587,16 +587,74 @@ function drawPlayer() {
     // Body bob for running
     const runBob = player.onGround ? Math.sin(player.runFrame * Math.PI / 2) * 3 : 0;
 
-    // === BODY ===
-    // Torso
-    const torsoGrad = ctx.createLinearGradient(10, 15, 40, 15);
-    torsoGrad.addColorStop(0, 'rgb(60, 60, 70)');
-    torsoGrad.addColorStop(0.5, 'rgb(80, 80, 90)');
-    torsoGrad.addColorStop(1, 'rgb(50, 50, 60)');
+    // === SHIRTLESS MUSCULAR TORSO (Kratos style) ===
+    // Base torso - skin tone
+    const torsoGrad = ctx.createLinearGradient(10, 15, 40, 55);
+    torsoGrad.addColorStop(0, 'rgb(195, 160, 130)');
+    torsoGrad.addColorStop(0.5, 'rgb(180, 145, 115)');
+    torsoGrad.addColorStop(1, 'rgb(165, 130, 100)');
     ctx.fillStyle = torsoGrad;
     ctx.beginPath();
-    ctx.ellipse(25, 35 + runBob, 18, 25, 0, 0, Math.PI * 2);
+    ctx.ellipse(25, 35 + runBob, 20, 28, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Pec muscles
+    ctx.fillStyle = 'rgb(175, 140, 110)';
+    ctx.beginPath();
+    ctx.ellipse(17, 25 + runBob, 10, 8, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(33, 25 + runBob, 10, 8, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pec highlights
+    ctx.fillStyle = 'rgb(200, 165, 135)';
+    ctx.beginPath();
+    ctx.ellipse(16, 23 + runBob, 6, 4, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(34, 23 + runBob, 6, 4, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Abs - 6 pack
+    ctx.fillStyle = 'rgb(165, 130, 100)';
+    for (let row = 0; row < 3; row++) {
+        ctx.beginPath();
+        ctx.ellipse(20, 38 + row * 8 + runBob, 6, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(30, 38 + row * 8 + runBob, 6, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Center line
+    ctx.strokeStyle = 'rgb(150, 115, 85)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(25, 20 + runBob);
+    ctx.lineTo(25, 58 + runBob);
+    ctx.stroke();
+
+    // === KRATOS RED STRIPE ===
+    ctx.strokeStyle = 'rgb(180, 30, 30)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    // Stripe goes from left shoulder diagonally across chest
+    ctx.moveTo(8, 18 + runBob);
+    ctx.lineTo(15, 25 + runBob);
+    ctx.lineTo(25, 35 + runBob);
+    ctx.lineTo(35, 50 + runBob);
+    ctx.stroke();
+
+    // Red stripe shadow
+    ctx.strokeStyle = 'rgb(120, 20, 20)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(10, 20 + runBob);
+    ctx.lineTo(17, 27 + runBob);
+    ctx.lineTo(27, 37 + runBob);
+    ctx.lineTo(37, 52 + runBob);
+    ctx.stroke();
 
     // === LEGS ===
     const legOffset = player.onGround ? Math.sin(player.runFrame * Math.PI / 2) * 8 : 5;
@@ -702,79 +760,151 @@ function drawPlayer() {
 
 function drawPlayerArm(ctx, runBob, isBack) {
     const armSwing = player.onGround ? Math.sin(player.runFrame * Math.PI / 2) * 0.4 : 0;
-    const smashAngle = player.isSmashing ?
-        (player.smashFrame < 8 ? -0.5 - player.smashFrame * 0.1 : 0.8) : 0;
+
+    // Smash animation phases with proper joint angles
+    let shoulderAngle = 0;
+    let elbowAngle = 0;
+
+    if (player.isSmashing) {
+        const frame = player.smashFrame;
+        if (frame < 6) {
+            // Wind-up: pull arm back, bend elbow
+            shoulderAngle = -0.8 - frame * 0.15;
+            elbowAngle = -1.2 - frame * 0.1;
+        } else if (frame < 12) {
+            // Strike: extend arm forward rapidly
+            const strikeProgress = (frame - 6) / 6;
+            shoulderAngle = -1.7 + strikeProgress * 2.5;
+            elbowAngle = -1.8 + strikeProgress * 2.0;
+        } else {
+            // Follow through
+            const followProgress = Math.min((frame - 12) / 10, 1);
+            shoulderAngle = 0.8 - followProgress * 0.8;
+            elbowAngle = 0.2 - followProgress * 0.2;
+        }
+    }
 
     ctx.save();
 
-    // Position arm
-    const armX = isBack ? 20 : 30;
-    const armY = 25 + runBob;
-    ctx.translate(armX, armY);
-
-    // Rotation
-    const rotation = isBack ?
-        (smashAngle * 0.5 - armSwing) :
-        (smashAngle + armSwing);
-    ctx.rotate(rotation);
+    // Shoulder position
+    const shoulderX = isBack ? 15 : 35;
+    const shoulderY = 22 + runBob;
+    ctx.translate(shoulderX, shoulderY);
 
     // Arm opacity for depth
     if (isBack) ctx.globalAlpha = 0.85;
 
-    // Upper arm
-    const armGrad = ctx.createLinearGradient(0, -8, 0, 8);
+    // === SHOULDER JOINT ===
+    // Deltoid muscle at shoulder
+    ctx.fillStyle = 'rgb(190, 155, 125)';
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === UPPER ARM (rotates from shoulder) ===
+    const upperArmRotation = isBack ?
+        (shoulderAngle * 0.5 - armSwing + 0.3) :
+        (shoulderAngle + armSwing + 0.3);
+    ctx.rotate(upperArmRotation);
+
+    const upperArmLength = 22;
+
+    // Upper arm muscle
+    const armGrad = ctx.createLinearGradient(0, -7, 0, 7);
     armGrad.addColorStop(0, 'rgb(175, 140, 110)');
     armGrad.addColorStop(0.5, 'rgb(200, 165, 135)');
     armGrad.addColorStop(1, 'rgb(165, 130, 100)');
     ctx.fillStyle = armGrad;
     ctx.beginPath();
-    ctx.ellipse(18, 0, 20, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(upperArmLength / 2, 0, upperArmLength / 2 + 2, 9, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Bicep bulge
+    // Bicep bulge (more pronounced during wind-up)
+    const bicepBulge = player.isSmashing && player.smashFrame < 8 ? 1.3 : 1;
     ctx.fillStyle = 'rgb(205, 170, 140)';
     ctx.beginPath();
-    ctx.ellipse(15, -3, 12, 7, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(upperArmLength / 2 - 2, -3, 10 * bicepBulge, 6 * bicepBulge, -0.2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Forearm
+    // Tricep on back
+    ctx.fillStyle = 'rgb(180, 145, 115)';
+    ctx.beginPath();
+    ctx.ellipse(upperArmLength / 2, 4, 8, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === ELBOW JOINT ===
+    ctx.translate(upperArmLength, 0);
+
+    // Elbow
+    ctx.fillStyle = 'rgb(185, 150, 120)';
+    ctx.beginPath();
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === FOREARM (rotates from elbow) ===
+    const forearmRotation = isBack ? elbowAngle * 0.5 : elbowAngle;
+    ctx.rotate(forearmRotation);
+
+    const forearmLength = 20;
+
+    // Forearm muscle
     ctx.fillStyle = armGrad;
     ctx.beginPath();
-    ctx.ellipse(38, 2, 18, 8, 0.3, 0, Math.PI * 2);
+    ctx.ellipse(forearmLength / 2, 0, forearmLength / 2 + 2, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Forearm definition
+    ctx.fillStyle = 'rgb(190, 155, 125)';
+    ctx.beginPath();
+    ctx.ellipse(forearmLength / 2 + 3, -2, 8, 4, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // === WRIST & FIST ===
+    ctx.translate(forearmLength, 0);
+
+    // Wrist
+    ctx.fillStyle = 'rgb(195, 160, 130)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 5, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Fist
-    const fistGrad = ctx.createRadialGradient(52, 2, 2, 52, 2, 12);
+    const fistGrad = ctx.createRadialGradient(10, 0, 2, 10, 0, 12);
     fistGrad.addColorStop(0, 'rgb(210, 175, 145)');
     fistGrad.addColorStop(1, 'rgb(170, 135, 105)');
     ctx.fillStyle = fistGrad;
     ctx.beginPath();
-    ctx.ellipse(52, 2, 10, 9, 0.2, 0, Math.PI * 2);
+    ctx.ellipse(10, 0, 10, 9, 0.1, 0, Math.PI * 2);
     ctx.fill();
 
     // Knuckles
     ctx.fillStyle = 'rgb(195, 160, 130)';
     for (let i = 0; i < 4; i++) {
         ctx.beginPath();
-        ctx.arc(56, -4 + i * 3, 3, 0, Math.PI * 2);
+        ctx.arc(16, -5 + i * 3.5, 3, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // TOFU tattoo on front arm
+    // TOFU tattoo on front arm's upper arm
     if (!isBack) {
-        ctx.fillStyle = 'rgba(25, 60, 45, 0.8)';
-        ctx.font = 'bold 8px Impact';
+        ctx.save();
+        ctx.rotate(-forearmRotation); // Undo forearm rotation
+        ctx.translate(-forearmLength, 0); // Go back to elbow
+        ctx.rotate(-upperArmRotation + 0.3); // Undo upper arm rotation partially
+        ctx.fillStyle = 'rgba(180, 30, 30, 0.9)'; // Red like Kratos markings
+        ctx.font = 'bold 7px Impact';
         ctx.textAlign = 'center';
-        ctx.fillText('TOFU', 18, 4);
+        ctx.fillText('TOFU', -8, 3);
+        ctx.restore();
     }
 
-    // Veins
-    ctx.globalAlpha = isBack ? 0.2 : 0.3;
-    ctx.strokeStyle = 'rgb(100, 120, 145)';
+    // Veins on forearm
+    ctx.globalAlpha = isBack ? 0.2 : 0.35;
+    ctx.strokeStyle = 'rgb(100, 130, 155)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(8, -2);
-    ctx.quadraticCurveTo(25, -4, 42, 0);
+    ctx.moveTo(-forearmLength + 5, -2);
+    ctx.quadraticCurveTo(-forearmLength / 2, -4, 2, -1);
     ctx.stroke();
 
     ctx.globalAlpha = 1;
@@ -1000,14 +1130,14 @@ function drawHUD() {
         ctx.fillStyle = 'rgba(100, 255, 100, 0.8)';
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'left';
-        ctx.fillText('SMASH READY [SHIFT]', 20, 70);
+        ctx.fillText('SMASH READY [CTRL]', 20, 70);
     }
 
     // Controls hint
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('A/D or ←/→: Move | W/↑/SPACE: Jump | SHIFT: SMASH', SCREEN_WIDTH/2, SCREEN_HEIGHT - 15);
+    ctx.fillText('A/D or ←/→: Move | W/↑/SPACE: Jump | CTRL: SMASH', SCREEN_WIDTH/2, SCREEN_HEIGHT - 15);
 }
 
 function drawStartScreen() {
@@ -1029,7 +1159,7 @@ function drawStartScreen() {
 
     ctx.fillText('A/D or ←/→ : Move', SCREEN_WIDTH/2, 360);
     ctx.fillText('W/↑/SPACE : Jump', SCREEN_WIDTH/2, 390);
-    ctx.fillText('SHIFT : SMASH ATTACK', SCREEN_WIDTH/2, 420);
+    ctx.fillText('CTRL : SMASH ATTACK', SCREEN_WIDTH/2, 420);
 
     ctx.fillStyle = '#ffff44';
     ctx.font = 'bold 28px Arial';
