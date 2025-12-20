@@ -3,49 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Larry's Adventure - A Platformer Game</title>
+    <title>DINO SMASHER - First Person Melee Combat</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="game-container">
         <div id="ui-overlay">
             <div id="score-display">
-                <span>WORLD: <span id="level">1-1</span></span>
-                <span>SCORE: <span id="score">0</span></span>
-                <span>COINS: <span id="coins">0</span></span>
-                <span>LIVES: <span id="lives">3</span></span>
-                <span>TIME: <span id="time">300</span></span>
+                <span id="level">WAVE 1</span>
+                <span>KILLS: <span id="score">0</span></span>
+                <span>ENEMIES: <span id="coins">0</span></span>
+                <span>HP: <span id="lives">100</span></span>
+                <span id="time"></span>
             </div>
         </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div id="start-screen">
-            <h1>LARRY'S ADVENTURE</h1>
-            <p>Help Larry collect coins and defeat enemies!</p>
+            <h1>DINO SMASHER</h1>
+            <p>Smash demons with your mighty dinosaur fists!</p>
             <div id="controls-info">
                 <p><strong>Controls:</strong></p>
-                <p>← → Arrow Keys or A/D - Move</p>
-                <p>↑ Arrow Key, W, or SPACE - Jump</p>
-                <p>Jump on enemies to defeat them!</p>
+                <p>W/S or Up/Down - Move Forward/Back</p>
+                <p>A/D - Strafe Left/Right</p>
+                <p>Left/Right Arrows - Turn</p>
+                <p>SPACE or F - SMASH!</p>
             </div>
-            <button id="start-btn">START GAME</button>
+            <button id="start-btn">START SMASHING</button>
         </div>
         <div id="game-over-screen" class="hidden">
-            <h1>GAME OVER</h1>
-            <p>Final Score: <span id="final-score">0</span></p>
-            <button id="restart-btn">PLAY AGAIN</button>
+            <h1>YOU DIED</h1>
+            <p>Total Kills: <span id="final-score">0</span></p>
+            <button id="restart-btn">SMASH AGAIN</button>
         </div>
         <div id="level-complete-screen" class="hidden">
-            <h1>LEVEL COMPLETE!</h1>
-            <p>World <span id="completed-level">1-1</span> cleared!</p>
-            <p>Score: <span id="level-score">0</span></p>
-            <button id="next-level-btn">NEXT LEVEL</button>
+            <h1>WAVE CLEARED!</h1>
+            <p>Wave <span id="completed-level">1</span> complete!</p>
+            <p>Total Kills: <span id="level-score">0</span></p>
+            <button id="next-level-btn">NEXT WAVE</button>
         </div>
         <div id="win-screen" class="hidden">
-            <h1>YOU WIN!</h1>
-            <p>Congratulations Larry!</p>
-            <p>You completed all 6 worlds!</p>
-            <p>Final Score: <span id="win-score">0</span></p>
-            <button id="win-restart-btn">PLAY AGAIN</button>
+            <h1>VICTORY!</h1>
+            <p>You have crushed all waves!</p>
+            <p>Total Kills: <span id="win-score">0</span></p>
+            <button id="win-restart-btn">SMASH AGAIN</button>
         </div>
     </div>
     <script src="game.js"></script>
