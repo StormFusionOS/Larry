@@ -885,42 +885,42 @@ function drawFists() {
     drawPressedFists(fistCenterX, fistCenterY, fistScale, smashPhase);
 }
 
-// Draw realistic first-person forearm from corner to fist
+// Draw photorealistic first-person forearm from corner to fist
 function drawFirstPersonForearm(originX, originY, wristX, wristY, isLeft, phase) {
     ctx.save();
-
-    // Skin tones for realistic look
-    const skinBase = '#C9A07A';
-    const skinWarm = '#D4AD8C';
-    const skinLight = '#E0BFA0';
-    const skinShadow = '#A8805C';
-    const skinDeep = '#8B6544';
-    const veinColor = '#5577A0';
-    const veinDark = '#446688';
 
     const dx = wristX - originX;
     const dy = wristY - originY;
     const armLength = Math.sqrt(dx * dx + dy * dy);
     const armAngle = Math.atan2(dy, dx);
 
-    // Draw from origin to wrist
     ctx.translate(originX, originY);
     ctx.rotate(armAngle);
 
-    // Base forearm thickness (thicker at elbow, tapers to wrist)
-    const elbowThickness = 85;
-    const wristThickness = 55;
+    const elbowThickness = 90;
+    const wristThickness = 58;
 
-    // Main forearm shape - tapered cylinder showing underside
-    const forearmGrad = ctx.createLinearGradient(0, -elbowThickness/2, 0, elbowThickness/2);
-    forearmGrad.addColorStop(0, skinShadow);
-    forearmGrad.addColorStop(0.2, skinBase);
-    forearmGrad.addColorStop(0.4, skinWarm);
-    forearmGrad.addColorStop(0.6, skinLight);
-    forearmGrad.addColorStop(0.8, skinWarm);
-    forearmGrad.addColorStop(1, skinShadow);
+    // === LAYER 1: Deep shadow base ===
+    ctx.fillStyle = 'rgba(120, 85, 60, 1)';
+    ctx.beginPath();
+    ctx.moveTo(-5, -elbowThickness/2 - 3);
+    ctx.lineTo(armLength + 5, -wristThickness/2 - 2);
+    ctx.quadraticCurveTo(armLength + 20, 0, armLength + 5, wristThickness/2 + 2);
+    ctx.lineTo(-5, elbowThickness/2 + 3);
+    ctx.quadraticCurveTo(-25, 0, -5, -elbowThickness/2 - 3);
+    ctx.fill();
 
-    ctx.fillStyle = forearmGrad;
+    // === LAYER 2: Main skin with natural color variation ===
+    const skinGrad = ctx.createLinearGradient(0, -elbowThickness/2, 0, elbowThickness/2);
+    skinGrad.addColorStop(0, 'rgb(158, 118, 88)');
+    skinGrad.addColorStop(0.15, 'rgb(182, 142, 110)');
+    skinGrad.addColorStop(0.3, 'rgb(198, 158, 128)');
+    skinGrad.addColorStop(0.5, 'rgb(210, 172, 142)');
+    skinGrad.addColorStop(0.7, 'rgb(198, 158, 128)');
+    skinGrad.addColorStop(0.85, 'rgb(182, 142, 110)');
+    skinGrad.addColorStop(1, 'rgb(158, 118, 88)');
+
+    ctx.fillStyle = skinGrad;
     ctx.beginPath();
     ctx.moveTo(0, -elbowThickness/2);
     ctx.lineTo(armLength, -wristThickness/2);
@@ -929,171 +929,180 @@ function drawFirstPersonForearm(originX, originY, wristX, wristY, isLeft, phase)
     ctx.quadraticCurveTo(-20, 0, 0, -elbowThickness/2);
     ctx.fill();
 
-    // Inner forearm muscle - Flexor group (prominent on underside)
-    const flexorGrad = ctx.createRadialGradient(armLength * 0.35, 15, 5, armLength * 0.35, 18, 40);
-    flexorGrad.addColorStop(0, skinLight);
-    flexorGrad.addColorStop(0.5, skinWarm);
-    flexorGrad.addColorStop(1, skinBase);
-    ctx.fillStyle = flexorGrad;
+    // === LAYER 3: Subsurface scattering (warm undertone) ===
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = 'rgb(220, 160, 140)';
     ctx.beginPath();
-    ctx.ellipse(armLength * 0.35, 18, 55, 28, 0.1, 0, Math.PI * 2);
+    ctx.ellipse(armLength * 0.4, 0, armLength * 0.35, 35, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
 
-    // Flexor carpi muscle
-    ctx.fillStyle = skinBase;
+    // === LAYER 4: Muscle definition with subtle shading ===
+
+    // Flexor muscles (inner arm) - very subtle
+    ctx.globalAlpha = 0.25;
+    const flexGrad = ctx.createRadialGradient(armLength * 0.35, 12, 0, armLength * 0.35, 15, 50);
+    flexGrad.addColorStop(0, 'rgb(215, 175, 145)');
+    flexGrad.addColorStop(0.5, 'rgb(195, 155, 125)');
+    flexGrad.addColorStop(1, 'rgba(175, 135, 105, 0)');
+    ctx.fillStyle = flexGrad;
     ctx.beginPath();
-    ctx.ellipse(armLength * 0.5, 12, 40, 20, 0.05, 0, Math.PI * 2);
+    ctx.ellipse(armLength * 0.35, 15, 60, 30, 0.08, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
 
-    // Palmaris longus tendon area
-    ctx.fillStyle = skinWarm;
+    // Brachioradialis - subtle bulge
+    ctx.globalAlpha = 0.2;
+    const brachGrad = ctx.createRadialGradient(armLength * 0.28, -18, 0, armLength * 0.28, -15, 45);
+    brachGrad.addColorStop(0, 'rgb(218, 178, 148)');
+    brachGrad.addColorStop(0.6, 'rgb(195, 155, 125)');
+    brachGrad.addColorStop(1, 'rgba(175, 135, 105, 0)');
+    ctx.fillStyle = brachGrad;
     ctx.beginPath();
-    ctx.ellipse(armLength * 0.7, 5, 25, 15, 0, 0, Math.PI * 2);
+    ctx.ellipse(armLength * 0.28, -18, 50, 28, -0.1, 0, Math.PI * 2);
     ctx.fill();
+    ctx.globalAlpha = 1;
 
-    // Brachioradialis (outer edge muscle)
-    const brachioGrad = ctx.createRadialGradient(armLength * 0.25, -20, 5, armLength * 0.25, -18, 35);
-    brachioGrad.addColorStop(0, skinLight);
-    brachioGrad.addColorStop(0.6, skinWarm);
-    brachioGrad.addColorStop(1, skinShadow);
-    ctx.fillStyle = brachioGrad;
+    // === LAYER 5: Veins (subtle, under skin) ===
+
+    // Main veins with transparency for under-skin look
+    ctx.globalAlpha = 0.35;
+    ctx.strokeStyle = 'rgb(95, 115, 140)';
+    ctx.lineWidth = 3.5;
+    ctx.lineCap = 'round';
+
+    // Median vein
     ctx.beginPath();
-    ctx.ellipse(armLength * 0.25, -20, 45, 25, -0.1, 0, Math.PI * 2);
-    ctx.fill();
-
-    // === PROMINENT VEINS (very visible on inner forearm) ===
-
-    // Main median vein - runs down center
-    ctx.strokeStyle = veinColor;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(armLength * 0.1, 5);
-    ctx.bezierCurveTo(armLength * 0.3, 8, armLength * 0.5, 3, armLength * 0.75, 0);
-    ctx.bezierCurveTo(armLength * 0.85, -2, armLength * 0.95, 0, armLength - 10, 2);
+    ctx.moveTo(armLength * 0.08, 3);
+    ctx.bezierCurveTo(armLength * 0.25, 6, armLength * 0.5, 2, armLength * 0.75, -1);
+    ctx.bezierCurveTo(armLength * 0.88, -2, armLength * 0.95, 0, armLength - 8, 1);
     ctx.stroke();
 
-    // Vein highlight
-    ctx.strokeStyle = 'rgba(180, 200, 220, 0.4)';
+    // Cephalic vein
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(armLength * 0.05, -22);
+    ctx.bezierCurveTo(armLength * 0.2, -25, armLength * 0.45, -20, armLength * 0.65, -16);
+    ctx.bezierCurveTo(armLength * 0.82, -13, armLength * 0.92, -10, armLength - 12, -7);
+    ctx.stroke();
+
+    // Basilic vein
+    ctx.globalAlpha = 0.3;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(armLength * 0.06, 25);
+    ctx.bezierCurveTo(armLength * 0.22, 27, armLength * 0.48, 22, armLength * 0.68, 16);
+    ctx.bezierCurveTo(armLength * 0.82, 12, armLength * 0.92, 8, armLength - 10, 6);
+    ctx.stroke();
+
+    // Small branch veins
+    ctx.globalAlpha = 0.25;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(armLength * 0.1, 4);
-    ctx.bezierCurveTo(armLength * 0.3, 7, armLength * 0.5, 2, armLength * 0.75, -1);
-    ctx.stroke();
-
-    // Cephalic vein (outer side)
-    ctx.strokeStyle = veinColor;
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(armLength * 0.05, -25);
-    ctx.bezierCurveTo(armLength * 0.2, -28, armLength * 0.4, -22, armLength * 0.6, -18);
-    ctx.bezierCurveTo(armLength * 0.8, -15, armLength * 0.9, -12, armLength - 15, -8);
-    ctx.stroke();
-
-    // Basilic vein (inner side)
-    ctx.strokeStyle = veinDark;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(armLength * 0.08, 28);
-    ctx.bezierCurveTo(armLength * 0.25, 30, armLength * 0.45, 25, armLength * 0.65, 18);
-    ctx.bezierCurveTo(armLength * 0.8, 14, armLength * 0.9, 10, armLength - 12, 8);
-    ctx.stroke();
-
-    // Branching veins
-    ctx.strokeStyle = veinColor;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(armLength * 0.35, 8);
-    ctx.quadraticCurveTo(armLength * 0.4, 20, armLength * 0.5, 22);
+    ctx.moveTo(armLength * 0.32, 5);
+    ctx.quadraticCurveTo(armLength * 0.38, 16, armLength * 0.48, 19);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(armLength * 0.5, 3);
-    ctx.quadraticCurveTo(armLength * 0.55, -8, armLength * 0.45, -18);
+    ctx.moveTo(armLength * 0.55, 1);
+    ctx.quadraticCurveTo(armLength * 0.52, -10, armLength * 0.58, -17);
     ctx.stroke();
+    ctx.globalAlpha = 1;
 
-    // === TENDONS visible near wrist ===
-    ctx.strokeStyle = 'rgba(200, 180, 160, 0.6)';
-    ctx.lineWidth = 3;
+    // === LAYER 6: Tendons near wrist ===
+    ctx.globalAlpha = 0.2;
+    ctx.strokeStyle = 'rgb(180, 155, 135)';
+    ctx.lineWidth = 2.5;
     for (let i = -2; i <= 2; i++) {
         ctx.beginPath();
-        ctx.moveTo(armLength * 0.7, i * 8);
-        ctx.lineTo(armLength - 5, i * 6);
+        ctx.moveTo(armLength * 0.72, i * 7);
+        ctx.lineTo(armLength - 3, i * 5.5);
         ctx.stroke();
     }
+    ctx.globalAlpha = 1;
 
-    // === ARM HAIR ===
-    ctx.strokeStyle = 'rgba(60, 45, 30, 0.35)';
-    ctx.lineWidth = 0.8;
-    for (let i = 0; i < 60; i++) {
-        const hx = armLength * 0.1 + Math.random() * (armLength * 0.75);
-        const hy = -35 + Math.random() * 70;
-        const hairLen = 4 + Math.random() * 6;
-        ctx.beginPath();
-        ctx.moveTo(hx, hy);
-        ctx.lineTo(hx - hairLen, hy + (Math.random() - 0.5) * 4);
-        ctx.stroke();
-    }
-
-    // === SKIN TEXTURE - wrinkles and creases ===
+    // === LAYER 7: Skin creases ===
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = 'rgb(130, 95, 70)';
+    ctx.lineWidth = 1.2;
 
     // Wrist creases
-    ctx.strokeStyle = skinDeep;
-    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(armLength - 25, -wristThickness/2 + 5);
-    ctx.quadraticCurveTo(armLength - 20, 0, armLength - 25, wristThickness/2 - 5);
+    ctx.moveTo(armLength - 22, -wristThickness/2 + 6);
+    ctx.quadraticCurveTo(armLength - 18, 0, armLength - 22, wristThickness/2 - 6);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(armLength - 35, -wristThickness/2 + 8);
-    ctx.quadraticCurveTo(armLength - 30, 0, armLength - 35, wristThickness/2 - 8);
+    ctx.moveTo(armLength - 32, -wristThickness/2 + 10);
+    ctx.quadraticCurveTo(armLength - 28, 0, armLength - 32, wristThickness/2 - 10);
     ctx.stroke();
 
-    // Elbow area crease
-    ctx.strokeStyle = skinShadow;
-    ctx.lineWidth = 2;
+    // Elbow crease
     ctx.beginPath();
-    ctx.moveTo(15, -elbowThickness/2 + 10);
-    ctx.quadraticCurveTo(25, 0, 15, elbowThickness/2 - 10);
+    ctx.moveTo(18, -elbowThickness/2 + 12);
+    ctx.quadraticCurveTo(28, 0, 18, elbowThickness/2 - 12);
     ctx.stroke();
+    ctx.globalAlpha = 1;
 
-    // Subtle skin pores
-    ctx.fillStyle = 'rgba(100, 75, 55, 0.08)';
-    for (let i = 0; i < 80; i++) {
-        const px = armLength * 0.1 + Math.random() * (armLength * 0.8);
-        const py = -30 + Math.random() * 60;
+    // === LAYER 8: Fine arm hair ===
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = 'rgb(70, 50, 35)';
+    ctx.lineWidth = 0.6;
+    for (let i = 0; i < 100; i++) {
+        const hx = armLength * 0.08 + Math.random() * (armLength * 0.8);
+        const hy = -38 + Math.random() * 76;
+        const hairLen = 3 + Math.random() * 5;
+        const hairAngle = -0.3 + Math.random() * 0.6;
         ctx.beginPath();
-        ctx.arc(px, py, 0.5 + Math.random() * 0.8, 0, Math.PI * 2);
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(hx - hairLen * Math.cos(hairAngle), hy - hairLen * Math.sin(hairAngle));
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // === LAYER 9: Micro skin texture ===
+    ctx.globalAlpha = 0.04;
+    ctx.fillStyle = 'rgb(90, 65, 45)';
+    for (let i = 0; i < 150; i++) {
+        const px = armLength * 0.05 + Math.random() * (armLength * 0.9);
+        const py = -40 + Math.random() * 80;
+        ctx.beginPath();
+        ctx.arc(px, py, 0.3 + Math.random() * 0.6, 0, Math.PI * 2);
         ctx.fill();
     }
+    ctx.globalAlpha = 1;
 
-    // === TOFU TATTOO on left forearm ===
+    // === LAYER 10: Specular highlights ===
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = 'rgb(255, 255, 255)';
+    ctx.beginPath();
+    ctx.ellipse(armLength * 0.45, -20, armLength * 0.25, 10, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.05;
+    ctx.beginPath();
+    ctx.ellipse(armLength * 0.6, 8, armLength * 0.15, 8, -0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // === TOFU TATTOO ===
     if (isLeft) {
         ctx.save();
-        ctx.translate(armLength * 0.4, -5);
-        ctx.rotate(0.05);
+        ctx.translate(armLength * 0.4, -8);
+        ctx.rotate(0.03);
 
-        // Tattoo shadow for depth
-        ctx.fillStyle = 'rgba(0, 30, 20, 0.2)';
-        ctx.font = 'bold 32px Impact';
+        // Tattoo with skin texture showing through
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = 'rgb(25, 60, 45)';
+        ctx.font = 'bold 28px Impact';
         ctx.textAlign = 'center';
-        ctx.fillText('TOFU', 2, 2);
-
-        // Main tattoo ink - dark green
-        ctx.fillStyle = '#1B4D3E';
         ctx.fillText('TOFU', 0, 0);
 
-        // Slight ink variation
-        ctx.fillStyle = 'rgba(25, 70, 50, 0.6)';
-        ctx.font = 'bold 30px Impact';
-        ctx.fillText('TOFU', 0, 0);
+        // Slight blur/age effect
+        ctx.globalAlpha = 0.15;
+        ctx.fillStyle = 'rgb(35, 75, 55)';
+        ctx.fillText('TOFU', 1, 1);
+        ctx.globalAlpha = 1;
 
         ctx.restore();
     }
-
-    // Highlight/sheen on skin
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.beginPath();
-    ctx.ellipse(armLength * 0.5, -15, armLength * 0.3, 12, 0, 0, Math.PI * 2);
-    ctx.fill();
 
     ctx.restore();
 }
@@ -1105,63 +1114,71 @@ function drawPressedFists(centerX, centerY, scale, phase) {
     ctx.scale(scale, scale);
 
     // Draw left fist
-    drawRealisticFist(-50, 0, true);
+    drawRealisticFist(-48, 0, true);
 
     // Draw right fist
-    drawRealisticFist(50, 0, false);
+    drawRealisticFist(48, 0, false);
 
-    // Knuckles pressing together in center
-    const skinLight = '#E0BFA0';
-    const skinWarm = '#D4AD8C';
-    const skinBase = '#C9A07A';
-
-    // Central pressed knuckle area
-    const centerGrad = ctx.createRadialGradient(0, -25, 5, 0, -20, 30);
-    centerGrad.addColorStop(0, skinLight);
-    centerGrad.addColorStop(0.5, skinWarm);
-    centerGrad.addColorStop(1, skinBase);
+    // Central connection where knuckles meet
+    const centerGrad = ctx.createRadialGradient(0, -28, 3, 0, -25, 28);
+    centerGrad.addColorStop(0, 'rgb(225, 192, 165)');
+    centerGrad.addColorStop(0.4, 'rgb(205, 170, 142)');
+    centerGrad.addColorStop(1, 'rgb(175, 140, 112)');
     ctx.fillStyle = centerGrad;
     ctx.beginPath();
-    ctx.ellipse(0, -25, 25, 20, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -28, 22, 18, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Impact effect during smash
+    // Subtle highlight on pressed knuckles
+    ctx.globalAlpha = 0.08;
+    ctx.fillStyle = 'rgb(255, 255, 255)';
+    ctx.beginPath();
+    ctx.ellipse(0, -32, 15, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Impact effect during smash - more subtle
     if (phase === 'smash') {
-        ctx.strokeStyle = 'rgba(255, 220, 150, 0.9)';
-        ctx.lineWidth = 5;
-        for (let i = 0; i < 10; i++) {
-            const angle = (i / 10) * Math.PI * 2;
-            const innerR = 60;
-            const outerR = 100 + Math.random() * 30;
+        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = 'rgb(255, 235, 200)';
+        ctx.lineWidth = 3;
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const innerR = 55;
+            const outerR = 85 + Math.random() * 25;
             ctx.beginPath();
-            ctx.moveTo(Math.cos(angle) * innerR, -20 + Math.sin(angle) * innerR * 0.6);
-            ctx.lineTo(Math.cos(angle) * outerR, -20 + Math.sin(angle) * outerR * 0.6);
+            ctx.moveTo(Math.cos(angle) * innerR, -22 + Math.sin(angle) * innerR * 0.5);
+            ctx.lineTo(Math.cos(angle) * outerR, -22 + Math.sin(angle) * outerR * 0.5);
             ctx.stroke();
         }
+        ctx.globalAlpha = 1;
     }
 
     ctx.restore();
 }
 
-// Draw a single realistic fist
+// Draw a single photorealistic fist
 function drawRealisticFist(offsetX, offsetY, isLeft) {
     ctx.save();
     ctx.translate(offsetX, offsetY);
     if (!isLeft) ctx.scale(-1, 1);
 
-    const skinBase = '#C9A07A';
-    const skinWarm = '#D4AD8C';
-    const skinLight = '#E0BFA0';
-    const skinShadow = '#A8805C';
-    const skinDeep = '#8B6544';
-    const veinColor = '#5577A0';
+    // === LAYER 1: Shadow base ===
+    ctx.fillStyle = 'rgb(115, 82, 58)';
+    ctx.beginPath();
+    ctx.moveTo(-48, 23);
+    ctx.quadraticCurveTo(-60, 0, -48, -33);
+    ctx.lineTo(23, -38);
+    ctx.quadraticCurveTo(40, 0, 23, 28);
+    ctx.quadraticCurveTo(-12, 40, -48, 23);
+    ctx.fill();
 
-    // Back of hand
-    const handGrad = ctx.createRadialGradient(-5, 0, 5, 0, 0, 55);
-    handGrad.addColorStop(0, skinLight);
-    handGrad.addColorStop(0.4, skinWarm);
-    handGrad.addColorStop(0.8, skinBase);
-    handGrad.addColorStop(1, skinShadow);
+    // === LAYER 2: Main hand skin ===
+    const handGrad = ctx.createRadialGradient(-8, -5, 5, 0, 0, 60);
+    handGrad.addColorStop(0, 'rgb(215, 178, 148)');
+    handGrad.addColorStop(0.3, 'rgb(198, 162, 132)');
+    handGrad.addColorStop(0.6, 'rgb(185, 148, 118)');
+    handGrad.addColorStop(1, 'rgb(162, 125, 95)');
 
     ctx.fillStyle = handGrad;
     ctx.beginPath();
@@ -1172,108 +1189,162 @@ function drawRealisticFist(offsetX, offsetY, isLeft) {
     ctx.quadraticCurveTo(-10, 35, -45, 20);
     ctx.fill();
 
-    // Hand veins
-    ctx.strokeStyle = veinColor;
-    ctx.lineWidth = 2;
+    // === LAYER 3: Subsurface warmth ===
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = 'rgb(225, 165, 145)';
     ctx.beginPath();
-    ctx.moveTo(-30, 15);
-    ctx.bezierCurveTo(-25, 5, -20, -10, -15, -25);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(-15, 18);
-    ctx.bezierCurveTo(-10, 8, -5, -5, 5, -22);
-    ctx.stroke();
+    ctx.ellipse(-10, -5, 35, 25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
-    // Metacarpal bones visible
-    ctx.strokeStyle = 'rgba(180, 160, 140, 0.3)';
-    ctx.lineWidth = 5;
+    // === LAYER 4: Veins (subtle) ===
+    ctx.globalAlpha = 0.28;
+    ctx.strokeStyle = 'rgb(95, 115, 138)';
+    ctx.lineWidth = 1.8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-28, 12);
+    ctx.bezierCurveTo(-24, 2, -18, -12, -14, -26);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-12, 15);
+    ctx.bezierCurveTo(-8, 5, -3, -8, 6, -24);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // === LAYER 5: Metacarpal structure ===
+    ctx.globalAlpha = 0.15;
+    ctx.strokeStyle = 'rgb(165, 135, 108)';
+    ctx.lineWidth = 4;
     for (let i = 0; i < 4; i++) {
-        const bx = -30 + i * 14;
+        const bx = -28 + i * 13;
         ctx.beginPath();
-        ctx.moveTo(bx, 10);
-        ctx.lineTo(bx + 5, -28);
+        ctx.moveTo(bx, 8);
+        ctx.lineTo(bx + 4, -28);
         ctx.stroke();
     }
+    ctx.globalAlpha = 1;
 
-    // Four knuckles (curled fingers)
+    // === LAYER 6: Knuckles ===
     for (let i = 0; i < 4; i++) {
-        const kx = -28 + i * 14;
-        const ksize = (i === 1 || i === 2) ? 1.15 : 1.0;
+        const kx = -26 + i * 13;
+        const ksize = (i === 1 || i === 2) ? 1.12 : 0.95;
+
+        // Knuckle base shadow
+        ctx.fillStyle = 'rgb(155, 120, 92)';
+        ctx.beginPath();
+        ctx.ellipse(kx, -36, 9 * ksize, 11 * ksize, 0, 0, Math.PI * 2);
+        ctx.fill();
 
         // Main knuckle
-        const knuckleGrad = ctx.createRadialGradient(kx, -38, 2, kx, -36, 12 * ksize);
-        knuckleGrad.addColorStop(0, '#F0E0D0');
-        knuckleGrad.addColorStop(0.4, skinLight);
-        knuckleGrad.addColorStop(1, skinBase);
+        const knuckleGrad = ctx.createRadialGradient(kx - 1, -38, 1, kx, -36, 10 * ksize);
+        knuckleGrad.addColorStop(0, 'rgb(228, 198, 175)');
+        knuckleGrad.addColorStop(0.4, 'rgb(208, 175, 150)');
+        knuckleGrad.addColorStop(1, 'rgb(178, 145, 118)');
         ctx.fillStyle = knuckleGrad;
         ctx.beginPath();
-        ctx.ellipse(kx, -38, 9 * ksize, 11 * ksize, 0, 0, Math.PI * 2);
+        ctx.ellipse(kx, -38, 8 * ksize, 10 * ksize, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Knuckle wrinkles
-        ctx.strokeStyle = skinDeep;
-        ctx.lineWidth = 1;
+        // Knuckle wrinkle
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = 'rgb(125, 92, 68)';
+        ctx.lineWidth = 0.8;
         ctx.beginPath();
-        ctx.arc(kx, -38, 8 * ksize, 0.4, 2.7);
+        ctx.arc(kx, -38, 7 * ksize, 0.5, 2.6);
         ctx.stroke();
+        ctx.globalAlpha = 1;
 
-        // Curled finger segment
-        ctx.fillStyle = skinBase;
+        // Curled finger
+        const fingerGrad = ctx.createRadialGradient(kx + 2, -29, 1, kx + 3, -28, 8 * ksize);
+        fingerGrad.addColorStop(0, 'rgb(205, 168, 140)');
+        fingerGrad.addColorStop(1, 'rgb(175, 138, 110)');
+        ctx.fillStyle = fingerGrad;
         ctx.beginPath();
-        ctx.ellipse(kx + 3, -28, 7 * ksize, 8 * ksize, 0.3, 0, Math.PI * 2);
+        ctx.ellipse(kx + 3, -28, 6 * ksize, 7 * ksize, 0.25, 0, Math.PI * 2);
         ctx.fill();
 
-        // Fingernail edge barely visible
-        ctx.fillStyle = '#F5EBE5';
+        // Fingernail hint
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = 'rgb(235, 225, 218)';
         ctx.beginPath();
-        ctx.ellipse(kx + 6, -24, 4 * ksize, 5 * ksize, 0.4, -0.5, Math.PI * 0.7);
+        ctx.ellipse(kx + 6, -24, 3 * ksize, 4 * ksize, 0.35, -0.4, Math.PI * 0.6);
         ctx.fill();
+        ctx.globalAlpha = 1;
     }
 
-    // Thumb wrapped over fingers
-    ctx.fillStyle = skinWarm;
+    // === LAYER 7: Thumb ===
+    // Thenar eminence
+    const thenarGrad = ctx.createRadialGradient(-40, 5, 2, -38, 8, 22);
+    thenarGrad.addColorStop(0, 'rgb(212, 175, 148)');
+    thenarGrad.addColorStop(0.6, 'rgb(192, 155, 128)');
+    thenarGrad.addColorStop(1, 'rgb(168, 132, 105)');
+    ctx.fillStyle = thenarGrad;
     ctx.beginPath();
-    ctx.ellipse(-42, 8, 14, 22, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(-40, 6, 13, 20, -0.25, 0, Math.PI * 2);
     ctx.fill();
 
-    const thumbGrad = ctx.createRadialGradient(-50, -8, 3, -48, -6, 14);
-    thumbGrad.addColorStop(0, skinLight);
-    thumbGrad.addColorStop(0.7, skinWarm);
-    thumbGrad.addColorStop(1, skinBase);
+    // Thumb segments
+    const thumbGrad = ctx.createRadialGradient(-48, -10, 2, -46, -8, 15);
+    thumbGrad.addColorStop(0, 'rgb(218, 182, 155)');
+    thumbGrad.addColorStop(0.5, 'rgb(198, 162, 135)');
+    thumbGrad.addColorStop(1, 'rgb(172, 138, 112)');
     ctx.fillStyle = thumbGrad;
     ctx.beginPath();
-    ctx.ellipse(-48, -8, 11, 15, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(-46, -10, 10, 14, -0.35, 0, Math.PI * 2);
     ctx.fill();
 
     // Thumb tip
-    ctx.fillStyle = skinWarm;
+    const tipGrad = ctx.createRadialGradient(-53, -23, 2, -52, -22, 12);
+    tipGrad.addColorStop(0, 'rgb(215, 180, 155)');
+    tipGrad.addColorStop(1, 'rgb(185, 150, 125)');
+    ctx.fillStyle = tipGrad;
     ctx.beginPath();
-    ctx.ellipse(-55, -22, 10, 12, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(-52, -22, 9, 11, -0.25, 0, Math.PI * 2);
     ctx.fill();
 
     // Thumb nail
-    ctx.fillStyle = '#F8F2EC';
+    ctx.fillStyle = 'rgb(238, 228, 222)';
     ctx.beginPath();
-    ctx.ellipse(-58, -26, 6, 8, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(-55, -26, 5, 7, -0.15, 0, Math.PI * 2);
     ctx.fill();
+    // Nail lunula
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = 'rgb(248, 242, 238)';
+    ctx.beginPath();
+    ctx.ellipse(-53, -22, 3, 2.5, -0.15, Math.PI * 0.8, Math.PI * 1.2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
     // Thumb crease
-    ctx.strokeStyle = skinDeep;
-    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = 'rgb(128, 95, 72)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(-46, 2);
-    ctx.quadraticCurveTo(-50, -5, -48, -12);
+    ctx.moveTo(-44, 0);
+    ctx.quadraticCurveTo(-48, -6, -46, -14);
     ctx.stroke();
+    ctx.globalAlpha = 1;
 
-    // Skin texture - pores
-    ctx.fillStyle = 'rgba(100, 80, 60, 0.1)';
-    for (let i = 0; i < 30; i++) {
-        const px = -40 + Math.random() * 55;
-        const py = -30 + Math.random() * 45;
+    // === LAYER 8: Skin texture ===
+    ctx.globalAlpha = 0.04;
+    ctx.fillStyle = 'rgb(85, 62, 45)';
+    for (let i = 0; i < 50; i++) {
+        const px = -45 + Math.random() * 60;
+        const py = -35 + Math.random() * 55;
         ctx.beginPath();
-        ctx.arc(px, py, 0.5 + Math.random() * 0.5, 0, Math.PI * 2);
+        ctx.arc(px, py, 0.3 + Math.random() * 0.5, 0, Math.PI * 2);
         ctx.fill();
     }
+    ctx.globalAlpha = 1;
+
+    // === LAYER 9: Specular highlight ===
+    ctx.globalAlpha = 0.06;
+    ctx.fillStyle = 'rgb(255, 255, 255)';
+    ctx.beginPath();
+    ctx.ellipse(-15, -35, 20, 8, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
 
     ctx.restore();
 }
